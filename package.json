@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "check:web": "for f in src-tauri/web/*.js; do node --check \"$f\" || exit 1; done && echo web-js-ok",
+    "presets": "node scripts/gen-presets.mjs",
+    "presets:check": "node scripts/gen-presets.mjs --check",
     "preview": "vite preview",
     "dev:tauri": "tauri dev",
     "build:tauri": "tauri build",

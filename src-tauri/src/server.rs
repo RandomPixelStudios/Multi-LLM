@@ -258,6 +258,7 @@ fn server_router(reg: Arc<ServerRegistry>) -> Router {
         .route("/app-usage.js", get(proxy::web_app_usage_js))
         .route("/app-settings.js", get(proxy::web_app_settings_js))
         .route("/presets.js", get(proxy::web_presets_js))
+        .route("/util.js", get(proxy::web_util_js))
         .route("/api/server-info", get(server_server_info))
         .route("/api/status", get(proxy::api_status::<Arc<ServerRegistry>>))
         .route("/api/models", get(proxy::api_models::<Arc<ServerRegistry>>))

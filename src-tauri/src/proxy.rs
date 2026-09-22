@@ -5231,6 +5231,7 @@ const WEB_APP_API_JS: &str = include_str!("../web/app-api.js");
 const WEB_APP_USAGE_JS: &str = include_str!("../web/app-usage.js");
 const WEB_APP_SETTINGS_JS: &str = include_str!("../web/app-settings.js");
 const WEB_PRESETS_JS: &str = include_str!("../web/presets.js");
+const WEB_UTIL_JS: &str = include_str!("../web/util.js");
 
 /// Serve an embedded JavaScript asset. Bewusst `no-cache` (statt langem
 /// max-age): Nach Updates soll kein Browser mehr alte App-Stände zeigen.
@@ -5334,6 +5335,11 @@ pub(crate) async fn web_app_settings_js() -> Response {
 
 pub(crate) async fn web_presets_js() -> Response {
     web_js_asset(WEB_PRESETS_JS)
+}
+
+/// Shared helpers (esc) loaded before every other web script.
+pub(crate) async fn web_util_js() -> Response {
+    web_js_asset(WEB_UTIL_JS)
 }
 
 /// Dashboard script, externalized so the CSP (`script-src 'self'`) allows it.
@@ -6995,6 +7001,7 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/app-usage.js", get(web_app_usage_js))
         .route("/app-settings.js", get(web_app_settings_js))
         .route("/presets.js", get(web_presets_js))
+        .route("/util.js", get(web_util_js))
         .route("/api/status", get(api_status::<Arc<AppState>>))
         .route("/api/models", get(api_models::<Arc<AppState>>))
         .route("/api/usage", get(api_usage::<Arc<AppState>>))

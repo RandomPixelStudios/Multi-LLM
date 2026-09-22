@@ -2,7 +2,7 @@
   // No key prompt here anymore: without a session the server redirects to
   // /login, with a session the browser sends the cookie automatically.
   // A 401 therefore means "not logged in" -> go to the login page.
-  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+  // esc() comes from /util.js (shared by all pages).
   async function getJSON(path) {
     const r = await fetch(path, { headers: { "x-multillm-admin": "1" } });
     if (r.status === 401) { location.href = "/login"; throw new Error("unauthorized"); }
