@@ -1,6 +1,8 @@
 //! Usage-Erfassung: Buckets je Modell/Tag, Persistenz, Summen, Export.
 
 use super::*;
+use std::path::Path;
+
 /// One per-model-per-local-day statistics bucket.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -74,6 +76,7 @@ pub fn usage_key(provider_id: &str, model_id: &str, day: &str) -> String {
 /// authenticated the request; settling it converts the reservation into real
 /// usage on success, or releases it on failure. The ticket is single-use, so
 /// exactly one settle happens across failover attempts and stream drops.
+#[allow(clippy::too_many_arguments)] // fester Aufruf-Contest der Forward-Pipeline
 pub fn record_usage(
     state: &Arc<AppState>,
     provider_id: &str,
@@ -160,7 +163,7 @@ pub fn record_ttft(
 pub(crate) fn usage_map_values(state: &Arc<AppState>) -> Vec<UsageBucket> {
     let map = state.usage.lock().unwrap_or_else(PoisonError::into_inner);
     let mut v: Vec<UsageBucket> = map.values().cloned().collect();
-    v.sort_by(|a, b| b.last_used_ms.cmp(&a.last_used_ms));
+    v.sort_by_key(|a| std::cmp::Reverse(a.last_used_ms));
     v
 }
 
@@ -331,7 +334,7 @@ pub fn summarize(state: &Arc<AppState>, range: &str) -> Vec<UsageSummary> {
         }
     }
     let mut v: Vec<UsageSummary> = agg.into_values().collect();
-    v.sort_by(|a, b| b.last_used_ms.cmp(&a.last_used_ms));
+    v.sort_by_key(|a| std::cmp::Reverse(a.last_used_ms));
     v
 }
 
@@ -407,7 +410,7 @@ pub(crate) const EXTRA_KEY_USAGE_FILE: &str = "extra_key_usage.json";
 
 /// Load persisted extra-key budgets from disk. Legacy rows keyed by the raw
 /// key secret are loaded directly.
-pub(crate) fn load_extra_key_usage(usage_path: &PathBuf, cfg: &Config) -> KeyBudgets {
+pub(crate) fn load_extra_key_usage(usage_path: &Path, cfg: &Config) -> KeyBudgets {
     let mut out = KeyBudgets::default();
     let Ok(text) = std::fs::read_to_string(usage_path.with_file_name(EXTRA_KEY_USAGE_FILE)) else {
         return out;
@@ -441,7 +444,7 @@ pub fn usage_export_json(state: &Arc<AppState>) -> String {
     };
     let map = state.usage.lock().unwrap_or_else(PoisonError::into_inner);
     let mut entries: Vec<&UsageBucket> = map.values().collect();
-    entries.sort_by(|a, b| b.last_used_ms.cmp(&a.last_used_ms));
+    entries.sort_by_key(|a| std::cmp::Reverse(a.last_used_ms));
     let vals: Vec<Value> = entries
         .iter()
         .map(|b| {

@@ -295,6 +295,10 @@ pub enum ResolveRule {
     Inference,
 }
 
+/// Auflösung eines Requests auf einen Profil-Zustand (Desktop: aktives
+/// Profil, Server: API-Key bzw. Session-Cookie). Bei Fehlern (401/403/429)
+/// liefert sie bereits die passende Response.
+#[allow(clippy::result_large_err)] // Err ist der fertige axum-Response-Body
 pub trait ResolveState: Clone + Send + Sync + 'static {
     /// Löst das zu bedienende Profil auf oder gibt die Fehler-Response
     /// (401/403/429) zurück.

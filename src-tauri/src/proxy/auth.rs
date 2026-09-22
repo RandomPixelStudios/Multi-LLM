@@ -209,6 +209,9 @@ pub(crate) fn today_cost_usd(state: &AppState) -> f64 {
 /// Returns the auth context (carrying a token reservation for limited extra
 /// keys), or an error response. `input_chars` sizes the gate-time reservation;
 /// `model` is the requested model id (defaults to "multillm").
+/// `Response` is deliberately the Err type (axum handler signature);
+/// boxing it would churn every caller, hence the explicit allow.
+#[allow(clippy::result_large_err)]
 pub(crate) fn gate_request(
     state: &Arc<AppState>,
     headers: &HeaderMap,
@@ -225,10 +228,7 @@ pub(crate) fn gate_request(
         )
     };
     let model_id = model.unwrap_or("multillm");
-    let auth = match auth_or_throttle(state, headers, addr.ip()) {
-        Ok(a) => a,
-        Err(resp) => return Err(resp),
-    };
+    let auth = auth_or_throttle(state, headers, addr.ip())?;
     // Global daily spend budget (if configured): once today's recorded cost
     // has reached it, reject every further authenticated request.
     let budget = {
@@ -373,6 +373,7 @@ pub(crate) fn auth_throttle() -> &'static Mutex<HashMap<std::net::IpAddr, (u32, 
 /// Authenticate a /v1 request and apply the LAN brute-force throttle around
 /// it: blocked IPs get a 429, five failed attempts within the window start a
 /// 60 s block, and a successful auth clears the counter.
+#[allow(clippy::result_large_err)] // Err ist der fertige axum-Response-Body
 pub(crate) fn auth_or_throttle(
     state: &AppState,
     headers: &HeaderMap,

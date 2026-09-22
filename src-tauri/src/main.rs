@@ -68,7 +68,7 @@ async fn pick_and_store_icon() -> Result<String, String> {
 
 #[tauri::command]
 async fn load_settings(state: tauri::State<'_, Arc<AppState>>) -> Result<Value, String> {
-    Ok(serde_json::to_value(read_public(&state)?).map_err(|e| e.to_string())?)
+    serde_json::to_value(read_public(&state)?).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

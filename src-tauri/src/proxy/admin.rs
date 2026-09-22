@@ -90,7 +90,7 @@ pub fn admin_upsert_provider(
         // Preserve previous status and endpoint format BEFORE dropping old
         // entries; brand-new providers start unchecked / OpenAI-compatible.
         let matches_target = |p: &settings::Provider| p.id == id || orig == Some(p.id.as_str());
-        let prev_status = g.providers.iter().filter(|p| matches_target(p)).filter_map(|p| p.status.clone()).last();
+        let prev_status = g.providers.iter().filter(|p| matches_target(p)).filter_map(|p| p.status.clone()).next_back();
         let prev_format = g.providers.iter().find(|p| matches_target(p)).map(|p| p.api_format.clone());
         let prev_logo = g.providers.iter().find(|p| matches_target(p)).and_then(|p| p.logo.clone());
         // Preserve user-configured prices for models the payload carries

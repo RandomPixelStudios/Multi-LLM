@@ -190,7 +190,7 @@ pub(crate) fn conversation_fingerprint(value: &serde_json::Value) -> Option<Stri
         .iter()
         .filter(|m| matches!(m.get("role").and_then(|r| r.as_str()), Some("system") | Some("developer")))
         .filter_map(|m| m.get("content"))
-        .map(|c| anthropic_text(c))
+        .map(anthropic_text)
         .filter(|t| !t.is_empty())
         .collect();
     let mut material = String::new();

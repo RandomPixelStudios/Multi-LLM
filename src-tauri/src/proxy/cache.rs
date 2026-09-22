@@ -114,9 +114,7 @@ pub(crate) fn note_strategy(strategy: &str) {
 pub(crate) fn cache_lookup(key: &str) -> Option<Value> {
     let mut cache = response_cache().lock().unwrap_or_else(PoisonError::into_inner);
     let now = now_ms();
-    let Some(entry) = cache.map.remove(key) else {
-        return None;
-    };
+    let entry = cache.map.remove(key)?;
     cache.order.retain(|k| k != key);
     if entry.expires_ms <= now {
         return None;

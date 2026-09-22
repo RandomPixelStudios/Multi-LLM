@@ -125,7 +125,7 @@ pub(crate) fn sanitize_upstream_error(s: &str) -> String {
         out.push_str(&rest[..pos + 3]);
         let after = &rest[pos + 3..];
         let authority_end = after
-            .find(|c| c == '/' || c == '?' || c == '#')
+            .find(['/', '?', '#'])
             .unwrap_or(after.len());
         let authority = &after[..authority_end];
         match authority.rfind('@') {
@@ -439,7 +439,7 @@ pub(crate) async fn forward_value(
         let needed = estimate_tokens(input_chars).saturating_add(max_tokens);
         let filtered: Vec<Candidate> = cands
             .iter()
-            .filter(|c| c.context_length.map_or(true, |cl| cl == 0 || cl > needed))
+            .filter(|c| c.context_length.is_none_or(|cl| cl == 0 || cl > needed))
             .cloned()
             .collect();
         if !filtered.is_empty() {
@@ -489,7 +489,7 @@ pub(crate) async fn forward_value(
             if !pol.tiers.is_empty() {
                 let tier_of = |c: &Candidate| -> usize {
                     let key = format!("{}::{}", c.provider_id, c.model_id);
-                    pol.tiers.iter().position(|t| t.iter().any(|k| *k == key)).unwrap_or(pol.tiers.len())
+                    pol.tiers.iter().position(|t| t.contains(&key)).unwrap_or(pol.tiers.len())
                 };
                 cands.sort_by_key(|c| tier_of(c));
             }
@@ -966,7 +966,7 @@ impl SseUsageScanner {
                 if let Some(choices) = v.get("choices").and_then(Value::as_array) {
                     if choices
                         .iter()
-                        .any(|c| c.get("finish_reason").map_or(false, |f| !f.is_null()))
+                        .any(|c| c.get("finish_reason").is_some_and(|f| !f.is_null()))
                     {
                         self.saw_terminal = true;
                     }
@@ -1209,6 +1209,10 @@ pub(crate) fn interrupted_stream_tail() -> Vec<u8> {
     out
 }
 
+/// Streamt die Upstream-Antwort an den Client (SSE oder Body).
+/// Bewusst viele Argumente: die komplette Forward-Pipeline reicht diese
+/// Werte durch, statt einen Kontext-Buster einzuführen.
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn stream_response(
     resp: reqwest::Response,
     state: Arc<AppState>,
@@ -1255,15 +1259,14 @@ pub(crate) async fn stream_response(
         STREAM_IDLE_TIMEOUT
     };
     let body_result = if is_anthropic {
-        let mut tr = AnthropicTranslator::default();
-        tr.model = requested_model;
+        let tr = AnthropicTranslator { model: requested_model, ..Default::default() };
         builder.body(Body::from_stream(AnthropicSseBody {
             inner: resp.bytes_stream(),
             state: state.clone(),
             provider_id: provider_id.clone(),
             model_id: model_id.clone(),
             api_key: api_key.clone(),
-            tr: tr,
+            tr,
             input_chars,
             started,
             finished: false,
@@ -1277,7 +1280,7 @@ pub(crate) async fn stream_response(
             state: state.clone(),
             provider_id: provider_id.clone(),
             model_id: model_id.clone(),
-            api_key: api_key,
+            api_key,
             scanner: SseUsageScanner::default(),
             input_chars,
             started,

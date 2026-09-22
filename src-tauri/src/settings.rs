@@ -31,7 +31,7 @@ pub fn sha256_hex(data: &[u8]) -> String {
         msg.push(0);
     }
     msg.extend_from_slice(&bitlen.to_be_bytes());
-    for block in msg.chunks_exact(64) {
+    for block in msg.as_chunks::<64>().0 {
         let mut w = [0u32; 64];
         for i in 0..16 {
             w[i] = u32::from_be_bytes([
@@ -382,6 +382,7 @@ impl Default for ResponseCacheSettings {
 /// the previous behavior kept for all existing configs.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub struct FailoverBudgetSettings {
     /// Maximum upstream attempts per request; 0 = unlimited.
     #[serde(default)]
@@ -392,14 +393,6 @@ pub struct FailoverBudgetSettings {
     pub first_token_timeout_secs: u64,
 }
 
-impl Default for FailoverBudgetSettings {
-    fn default() -> Self {
-        Self {
-            max_attempts: 0,
-            first_token_timeout_secs: 0,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -587,11 +580,10 @@ pub fn migrate_legacy_data(
     for name in ["settings.json", "usage.json", "extra_key_usage.json"] {
         let src = legacy_dir.join(name);
         let dst = target_dir.join(name);
-        if src.is_file() && parses_as_json(&src) && !dst.exists() {
-            if std::fs::copy(&src, &dst).is_ok() {
+        if src.is_file() && parses_as_json(&src) && !dst.exists()
+            && std::fs::copy(&src, &dst).is_ok() {
                 copied.push(name.to_string());
             }
-        }
     }
     copied
 }

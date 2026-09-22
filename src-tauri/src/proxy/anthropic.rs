@@ -236,11 +236,8 @@ pub(crate) fn openai_to_anthropic(v: &Value, model_id: &str) -> Value {
         if let Some(t) = v.get("top_p").filter(|x| !x.is_null()) {
             obj.insert("top_p".to_string(), t.clone());
         }
-        match v.get("stream").and_then(Value::as_bool) {
-            Some(true) => {
-                obj.insert("stream".to_string(), Value::Bool(true));
-            }
-            _ => {}
+        if let Some(true) = v.get("stream").and_then(Value::as_bool) {
+            obj.insert("stream".to_string(), Value::Bool(true));
         }
         match v.get("stop") {
             Some(Value::String(s)) => {
@@ -421,11 +418,8 @@ pub(crate) fn openai_to_anthropic_with_tools(v: &Value, model_id: &str) -> Value
         if let Some(tc) = tool_choice {
             obj.insert("tool_choice".to_string(), tc);
         }
-        match v.get("stream").and_then(Value::as_bool) {
-            Some(true) => {
-                obj.insert("stream".to_string(), Value::Bool(true));
-            }
-            _ => {}
+        if let Some(true) = v.get("stream").and_then(Value::as_bool) {
+            obj.insert("stream".to_string(), Value::Bool(true));
         }
         match v.get("stop") {
             Some(Value::String(s)) => {
@@ -858,8 +852,7 @@ mod anthropic_translator_tests {
 
     #[test]
     fn streamed_tool_calls_are_translated() {
-        let mut tr = AnthropicTranslator::default();
-        tr.model = "multillm".to_string();
+        let mut tr = AnthropicTranslator { model: "multillm".to_string(), ..Default::default() };
         let mut out = Vec::new();
         out.extend(tr.feed(&sse("message_start", json!({
             "message": { "id": "msg_1", "usage": { "input_tokens": 10 } }
@@ -918,8 +911,7 @@ mod anthropic_translator_tests {
 
     #[test]
     fn text_only_stream_finish_reason_unchanged() {
-        let mut tr = AnthropicTranslator::default();
-        tr.model = "multillm".to_string();
+        let mut tr = AnthropicTranslator { model: "multillm".to_string(), ..Default::default() };
         let mut out = Vec::new();
         out.extend(tr.feed(&sse("message_start", json!({
             "message": { "id": "msg_2", "usage": { "input_tokens": 1 } }

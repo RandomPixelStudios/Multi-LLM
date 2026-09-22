@@ -20,31 +20,31 @@ pub(crate) const WEB_UTIL_JS: &str = include_str!("../../web/util.js");
 /// Serve an embedded JavaScript asset. Bewusst `no-cache` (statt langem
 /// max-age): Nach Updates soll kein Browser mehr alte App-Stände zeigen.
 pub(crate) fn web_js_asset(source: &'static str) -> Response {
-    ((
+    (
         [(header::CONTENT_TYPE, "text/javascript"), (header::CACHE_CONTROL, "no-cache")],
         source,
-    ))
+    )
         .into_response()
 }
 
-/// Read-only overview kept at "/dashboard"; "/" is the full management app.
+// Read-only overview kept at "/dashboard"; "/" is the full management app.
 
 /// App logo served to the embedded web UI.
 pub(crate) async fn web_logo() -> Response {
-    ((
+    (
         [(header::CONTENT_TYPE, "image/png"), (header::CACHE_CONTROL, "public, max-age=86400")],
         Bytes::from_static(WEB_LOGO),
-    ))
+    )
         .into_response()
 }
 
 /// HTML-Seiten kommen bewusst mit `no-cache`: Nach Updates darf kein
 /// Browser mehr alte App-Stände zeigen.
 pub(crate) fn web_html_page(source: &'static str) -> Response {
-    ((
+    (
         [(header::CONTENT_TYPE, "text/html; charset=utf-8"), (header::CACHE_CONTROL, "no-cache")],
         source,
-    ))
+    )
         .into_response()
 }
 
@@ -86,10 +86,10 @@ pub(crate) async fn web_dashboard_page(headers: HeaderMap) -> Response {
 }
 
 pub(crate) async fn web_app_css() -> Response {
-    ((
+    (
         [(header::CONTENT_TYPE, "text/css"), (header::CACHE_CONTROL, "no-cache")],
         WEB_APP_CSS,
-    ))
+    )
         .into_response()
 }
 
@@ -128,9 +128,9 @@ pub(crate) async fn web_util_js() -> Response {
 
 /// Dashboard script, externalized so the CSP (`script-src 'self'`) allows it.
 pub(crate) async fn web_dashboard_js() -> Response {
-    ((
+    (
         [(header::CONTENT_TYPE, "text/javascript"), (header::CACHE_CONTROL, "no-cache")],
         WEB_DASHBOARD_JS,
-    ))
+    )
         .into_response()
 }

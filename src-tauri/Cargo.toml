@@ -22,7 +22,6 @@ uuid = { version = "1", features = ["v4"] }
 rfd = "0.15"
 base64 = "0.22"
 argon2 = "0.5"
-fs2 = "0.4"
 
 [features]
 # Embeds the built frontend (dist/) into the binary - required for

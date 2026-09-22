@@ -228,10 +228,10 @@ pub(crate) fn login_throttle_map() -> &'static Mutex<HashMap<std::net::IpAddr, (
 
 pub(crate) fn login_throttled(ip: std::net::IpAddr) -> bool {
     let map = login_throttle_map().lock().unwrap_or_else(PoisonError::into_inner);
-    match map.get(&ip) {
-        Some((fails, since)) if *fails >= 10 && now_ms() - *since < 60_000 => true,
-        _ => false,
-    }
+    matches!(
+        map.get(&ip),
+        Some((fails, since)) if *fails >= 10 && now_ms() - *since < 60_000
+    )
 }
 
 pub(crate) fn login_throttle_failed(ip: std::net::IpAddr) {

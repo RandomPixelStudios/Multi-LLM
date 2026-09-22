@@ -322,7 +322,7 @@ fn next_port(file: &UsersFile) -> Result<u16, String> {
     let used: HashSet<u16> = file.users.iter().map(|u| u.port).collect();
     let reserved = reserved_ports();
     // Oberhalb des höchsten belegten Ports starten (mindestens Basis).
-    let mut p = used.iter().max().map(|m| *m).unwrap_or(base.saturating_sub(1));
+    let mut p = used.iter().max().copied().unwrap_or(base.saturating_sub(1));
     if p < base.saturating_sub(1) {
         p = base.saturating_sub(1);
     }
@@ -477,7 +477,7 @@ pub async fn list_users() -> Vec<UserPublic> {
 /// Sync account list (also used by the supervisor thread, no runtime needed).
 pub fn account_list() -> Vec<UserPublic> {
     let mut users: Vec<UserPublic> = load_file().users.iter().map(UserPublic::from).collect();
-    users.sort_by(|a, b| a.username.to_lowercase().cmp(&b.username.to_lowercase()));
+    users.sort_by_key(|a| a.username.to_lowercase());
     users
 }
 

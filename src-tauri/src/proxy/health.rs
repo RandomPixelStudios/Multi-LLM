@@ -74,7 +74,7 @@ pub async fn check_providers_impl(state: &Arc<AppState>, ids: &[String]) {
             if let Ok(Some((id, ok))) = h.await {
                 // Feed the rolling health history so the dashboard shows data
                 // even before real traffic flows through the proxy.
-                record_health(&state, &id, ok);
+                record_health(state, &id, ok);
                 results.push((id, ok));
             }
         }

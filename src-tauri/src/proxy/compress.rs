@@ -108,7 +108,7 @@ pub(crate) fn compress_request(value: &Value, strength: u32) -> Value {
             } else if let Some(parts) = m.get_mut("content").and_then(Value::as_array_mut) {
                 for p in parts.iter_mut() {
                     if p.get("type").and_then(Value::as_str) == Some("text") {
-                        if let Some(text) = p.get("text").as_deref().and_then(Value::as_str) {
+                        if let Some(text) = p.get("text").and_then(Value::as_str) {
                             let compressed = compress_prompt(text, strength);
                             p.as_object_mut().unwrap().insert("text".to_string(), Value::String(compressed));
                         }

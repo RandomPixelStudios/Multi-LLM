@@ -98,23 +98,20 @@ pub(crate) fn responses_tools_to_chat(tools: &Value) -> Option<Value> {
     let arr = tools.as_array()?;
     let mut out = Vec::new();
     for t in arr {
-        match t.get("type").and_then(Value::as_str).unwrap_or("") {
-            "function" => {
-                let name = t.get("name").cloned().unwrap_or(Value::Null);
-                out.push(json!({
-                    "type": "function",
-                    "function": {
-                        "name": name,
-                        "description": t.get("description").cloned().unwrap_or(json!("")),
-                        "parameters": t.get("parameters").cloned().unwrap_or_else(|| json!({ "type": "object", "properties": {} })),
-                    },
-                }));
-            }
-            // web_search / file_search / computer_use etc. have no chat-
-            // completions equivalent - dropped rather than rejected so basic
-            // requests still work against plain models.
-            _ => {}
+        if t.get("type").and_then(Value::as_str).unwrap_or("") == "function" {
+            let name = t.get("name").cloned().unwrap_or(Value::Null);
+            out.push(json!({
+                "type": "function",
+                "function": {
+                    "name": name,
+                    "description": t.get("description").cloned().unwrap_or(json!("")),
+                    "parameters": t.get("parameters").cloned().unwrap_or_else(|| json!({ "type": "object", "properties": {} })),
+                },
+            }));
         }
+        // web_search / file_search / computer_use etc. have no chat-
+        // completions equivalent - dropped rather than rejected so basic
+        // requests still work against plain models.
     }
     (!out.is_empty()).then_some(Value::Array(out))
 }
