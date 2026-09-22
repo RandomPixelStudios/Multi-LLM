@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
+  <title>Multi LLM</title>
+  <link rel="icon" type="image/png" href="/logo.png" />
+  <script>
+    /* Apply the persisted theme before first paint ('light' | 'dark'; dark is the default). */
+    try {
+      if (localStorage.getItem("theme") === "light") {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    } catch (e) { /* storage unavailable -> stay dark */ }
+  </script>
+</head>
+<body>
+  <!-- Custom frameless titlebar (decorations:false) -->
+  <div id="titlebar" data-tauri-drag-region>
+    <div class="tb-left" data-tauri-drag-region>
+      <span class="tb-title" data-tauri-drag-region>Multi LLM</span>
+    </div>
+    <div class="tb-user hidden" id="tb-user">
+      <button class="tb-user-chip" id="tb-user-chip" title="Switch / manage users">
+        <span class="tb-avatar" id="tb-avatar">?</span>
+        <span class="tb-username" id="tb-username">&ndash;</span>
+        <span class="tb-port" id="tb-port"></span>
+      </button>
+      <button class="tb-logout" id="btn-logout" title="Log out" aria-label="Log out"><span class="glyph" data-icon="logout"></span></button>
+    </div>
+    <div class="tb-caption">
+      <button class="cap" id="win-min" title="Minimize" aria-label="Minimize"><span class="glyph" data-icon="minimize"></span></button>
+      <button class="cap" id="win-max" title="Maximize / Restore" aria-label="Maximize"><span class="glyph" data-icon="maximize"></span></button>
+      <button class="cap cap-close" id="win-close" title="Close" aria-label="Close"><span class="glyph" data-icon="close"></span></button>
+    </div>
+  </div>
+
+  <div class="shell">
+    <!-- Left sidebar navigation -->
+    <aside id="sidebar">
+      <nav class="nav" role="tablist">
+        <button class="nav-item active" role="tab" aria-selected="true" data-panel="models"><span>Models</span></button>
+        <button class="nav-item" role="tab" aria-selected="false" data-panel="providers"><span>Providers</span></button>
+        <button class="nav-item" role="tab" aria-selected="false" data-panel="virtual"><span>Virtual Models</span></button>
+        <button class="nav-item" role="tab" aria-selected="false" data-panel="api"><span>API</span></button>
+        <button class="nav-item" role="tab" aria-selected="false" data-panel="usage"><span>Usage</span></button>
+        <button class="nav-item" role="tab" aria-selected="false" data-panel="settings"><span>Settings</span></button>
+      </nav>
+      <div class="side-foot">
+        <button class="nav-item" id="btn-users"><span>Users</span></button>
+        <div id="side-version" title="Multi LLM"></div>
+      </div>
+    </aside>
+
+    <main>
+      <!-- ============ Models tab ============ -->
+      <section class="panel" id="panel-models" role="tabpanel" aria-labelledby="h-models">
+        <div class="toolbar">
+          <div>
+            <h1 id="h-models">Models</h1>
+            <p class="sub" id="models-sub"></p>
+          </div>
+          <button class="btn" id="btn-goto-providers"><span class="glyph" data-icon="add"></span><span>Add model</span></button>
+        </div>
+        <p class="hint-sm models-hint">Speed shows up after you have used a model once through the proxy.</p>
+        <div class="search-row">
+          <input id="model-search" type="search" placeholder="Search models..." autocomplete="off" spellcheck="false" />
+          <select id="model-sort" class="input sort-select" title="Sort models">
+            <option value="name">Sort: Name</option>
+            <option value="context">Sort: Context</option>
+            <option value="provider">Sort: Provider</option>
+            <option value="starred">Sort: Starred</option>
+          </select>
+        </div>
+        <div id="model-grid"></div>
+        <div id="models-empty" class="empty hidden">
+          <span class="glyph" data-icon="list"></span>
+          <b>No models yet</b><br />
+          Enable models on a provider in the Providers tab.
+          <br />
+          <button class="empty-action" id="models-empty-goto">Go to Providers</button>
+        </div>
+      </section>
+
+      <!-- ============ Providers tab ============ -->
+      <section class="panel hidden" id="panel-providers" role="tabpanel" aria-labelledby="h-providers">
+        <div class="toolbar">
+          <div>
+            <h1 id="h-providers">Providers</h1>
+            <p class="sub">Connect OpenAI-compatible providers and enable their models.</p>
+          </div>
+          <button class="btn" id="btn-add-provider"><span class="glyph" data-icon="add"></span><span>Add Provider</span></button>
+        </div>
+        <div id="provider-grid"></div>
+        <div id="providers-empty" class="empty hidden">
+          <span class="glyph" data-icon="person"></span>
+          <b>No providers yet</b><br />
+          Click Add Provider to connect one.
+        </div>
+      </section>
+
+      <!-- ============ Virtual Models tab ============ -->
+      <section class="panel hidden" id="panel-virtual" role="tabpanel" aria-labelledby="h-virtual">
+        <div class="toolbar">
+          <div>
+            <h1 id="h-virtual">Virtual Models</h1>
+            <p class="sub">Bundle existing models under one API name. Requests pick a random member.</p>
+          </div>
+          <button class="btn" id="btn-add-virtual"><span class="glyph" data-icon="add"></span><span>Create new Virtual Model</span></button>
+        </div>
+        <div id="virtual-grid"></div>
+        <div id="virtual-empty" class="empty hidden">
+          <span class="glyph" data-icon="chart"></span>
+          <b>No virtual models yet</b><br />
+          Create one to expose a custom bundle of models via the API.
+        </div>
+      </section>
+
+      <!-- ============ API tab ============ -->
+      <section class="panel hidden" id="panel-api" role="tabpanel" aria-labelledby="h-api">
+        <div class="toolbar">
+          <div>
+            <h1 id="h-api">API</h1>
+            <p class="sub">OpenAI-compatible endpoint &mdash; point any client at it.</p>
+          </div>
+        </div>
+
+        <div class="card api-hero">
+          <div class="api-hero-row">
+            <div class="field grow">
+              <label>Base URL</label>
+              <div class="url-pill">
+                <span class="url-dot" title="Endpoint status"></span>
+                <span class="mono" id="api-url-preview">&mdash;</span>
+                <button class="ibtn url-copy" data-src="api-url-preview" title="Copy URL"><span class="glyph" data-icon="copy"></span></button>
+              </div>
+            </div>
+            <div class="field port-field">
+              <label for="api-port">Port</label>
+              <div class="url-pill">
+                <input id="api-port" class="mono" type="number" min="1" max="65535" step="1" />
+              </div>
+            </div>
+          </div>
+
+          <div class="api-hero-row">
+            <div class="field grow">
+              <label>API Key</label>
+              <div class="url-pill">
+                <input id="api-key-input" class="mono" type="password" readonly spellcheck="false" autocomplete="off" />
+                <button class="ibtn" id="key-copy" title="Copy API key"><span class="glyph" data-icon="copy"></span></button>
+                <button class="ibtn" id="key-show" title="Show / hide key"><span class="glyph" data-icon="eye"></span></button>
+                <button class="ibtn" id="key-reroll" title="Generate a new key - click twice to confirm"><span class="glyph" data-icon="refresh"></span></button>
+              </div>
+              <p class="hint-sm">One key for everything. Rerolling (click twice) invalidates all previous keys.</p>
+            </div>
+          </div>
+
+          <p class="hint-sm" id="expose-hint" style="display:none;"></p>
+          <p class="hint-sm" id="api-error" style="display:none;color:var(--danger);"></p>
+
+          <div class="api-tiles">
+            <div class="api-tile">
+              <div class="api-tile-head">
+                <label class="api-tile-title" for="api-enabled">Enabled</label>
+                <input type="checkbox" class="switch" id="api-enabled" />
+              </div>
+              <p class="hint-sm">Serve the OpenAI-compatible API.</p>
+            </div>
+            <div class="api-tile">
+              <div class="api-tile-head">
+                <label class="api-tile-title" for="api-expose">Expose LAN</label>
+                <input type="checkbox" class="switch" id="api-expose" />
+              </div>
+              <p class="hint-sm">Reachable from other devices on your network.</p>
+            </div>
+            <div class="api-tile">
+              <div class="api-tile-head">
+                <label class="api-tile-title" for="api-expose-all">All models</label>
+                <input type="checkbox" class="switch" id="api-expose-all" />
+              </div>
+              <p class="hint-sm">List every enabled model, not just multillm.</p>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn sm" id="btn-client-snippets"><span class="glyph" data-icon="chart"></span><span>Client config snippets</span></button>
+            <span id="api-saved" class="saved-note">Saved</span>
+            <span class="flex-spacer"></span>
+            <span class="hint-sm">Changes save automatically</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Usage tab ============ -->
+      <section class="panel hidden" id="panel-usage" role="tabpanel" aria-labelledby="h-usage">
+        <div class="toolbar">
+          <div>
+            <h1 id="h-usage">Usage</h1>
+            <p class="sub">Token consumption per model.</p>
+          </div>
+          <div class="toolbar-side">
+            <input id="usage-search" type="search" placeholder="Filter models or providers..." autocomplete="off" spellcheck="false" />
+            <div class="sort-wrap" id="usage-sort-wrap">
+              <button class="btn sm" id="usage-sort" aria-haspopup="true">Sort: All Time &middot; Most Usage</button>
+              <div class="sort-menu hidden" id="usage-sort-menu">
+                <div class="sort-label">Time</div>
+                <button class="sort-item" data-range="today"><span class="sort-check"></span>Today</button>
+                <button class="sort-item" data-range="month"><span class="sort-check"></span>Month</button>
+                <button class="sort-item" data-range="all"><span class="sort-check"></span>All Time</button>
+                <div class="sort-sep"></div>
+                <div class="sort-label">Sort by</div>
+                <button class="sort-item" data-sort="most"><span class="sort-check"></span>Most Usage</button>
+                <button class="sort-item" data-sort="last"><span class="sort-check"></span>Last Used</button>
+                <button class="sort-item" data-sort="oldest"><span class="sort-check"></span>Oldest Used</button>
+                <button class="sort-item" data-sort="requests"><span class="sort-check"></span>Most Requests</button>
+                <button class="sort-item" data-sort="failed"><span class="sort-check"></span>Most Failed</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary-row">
+          <div class="stat"><div class="v" id="stat-requests">0</div><div class="k">Successful requests</div></div>
+          <div class="stat"><div class="v" id="stat-failed">0</div><div class="k">Failed attempts</div></div>
+          <div class="stat"><div class="v" id="stat-input">0</div><div class="k">Input tokens</div></div>
+          <div class="stat"><div class="v" id="stat-output">0</div><div class="k">Output tokens</div></div>
+        </div>
+
+        <div class="card rank-card">
+          <div class="rank-title">Model Ranking</div>
+          <div class="rank-sub">Total tokens per model relative to the busiest model.</div>
+          <div id="usage-body" class="rank-list"></div>
+          <div id="usage-empty" class="empty hidden">
+            <span class="glyph" data-icon="chart"></span>
+            <b>No usage recorded yet</b><br />
+            Send a request through the proxy and it will show up here.
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Settings tab ============ -->
+      <section class="panel hidden" id="panel-settings" role="tabpanel" aria-labelledby="h-settings">
+        <div class="toolbar">
+          <div>
+            <h1 id="h-settings">Settings</h1>
+            <p class="sub">App behavior.</p>
+          </div>
+        </div>
+        <div class="set-page">
+          <div class="set-search">
+            <input id="settings-search" type="search" placeholder="Search settings..." autocomplete="off" spellcheck="false" />
+          </div>
+
+          <section class="set-sec">
+            <h2 class="set-sec-title">Appearance</h2>
+            <div class="card set-card">
+              <div class="set-row">
+                <span class="set-ico glyph" data-icon="palette"></span>
+                <label for="setting-theme" class="set-text">
+                  <b>Light mode</b>
+                  <span class="hint-sm">Switch between the dark default and a light theme.</span>
+                </label>
+                <input type="checkbox" class="switch" id="setting-theme" />
+              </div>
+              <div class="set-row">
+                <span class="set-ico glyph" data-icon="up"></span>
+                <div class="set-text">
+                  <b>Tab order</b>
+                  <span class="hint-sm">Arrange the sidebar tabs to match your workflow.</span>
+                </div>
+              </div>
+              <div class="tab-order-list" id="tab-order-list"></div>
+            </div>
+          </section>
+
+          <section class="set-sec">
+            <h2 class="set-sec-title">Routing</h2>
+            <div class="card set-card">
+              <div class="set-row">
+                <span class="set-ico glyph" data-icon="route"></span>
+                <div class="set-text">
+                  <b>Routing strategy</b>
+                  <span class="hint-sm">How 'multillm' and virtual bundles pick a model per request.</span>
+                </div>
+                <select id="setting-strategy" class="input">
+                  <option value="weighted">Weighted random (starred ×4)</option>
+                  <option value="round_robin">Round robin</option>
+                  <option value="priority">Priority (provider order)</option>
+                  <option value="latency">Lowest average latency</option>
+                  <option value="fastest">Fastest (latency × health)</option>
+                  <option value="sticky">Sticky sessions</option>
+                </select>
+              </div>
+            </div>
+            <p class="hint-sm set-note" id="strategy-note"></p>
+          </section>
+
+          <section class="set-sec">
+            <h2 class="set-sec-title">Token compression</h2>
+            <div class="card set-card">
+              <div class="set-row">
+                <span class="set-ico glyph" data-icon="compress"></span>
+                <label for="setting-compress" class="set-text">
+                  <b>Enable token compression</b>
+                  <span class="hint-sm">Shrink prompts before they go upstream &mdash; saves tokens and cost.</span>
+                </label>
+                <input type="checkbox" class="switch" id="setting-compress" />
+              </div>
+              <div class="set-row" id="row-compress-strength">
+                <span class="set-ico glyph" data-icon="compress"></span>
+                <label for="setting-compress-strength" class="set-text">
+                  <b>Strength (1-10)</b>
+                  <span class="hint-sm"><b>1-3</b> safe: collapses blank lines and trailing whitespace &middot; <b>4-6</b> trims harder &middot; <b>7-10</b> aggressive: drops repeated words in very long prompts.</span>
+                </label>
+                <div class="slider-row">
+                  <input id="setting-compress-strength" type="range" min="1" max="10" step="1" />
+                  <span class="slider-value" id="setting-compress-strength-value">3</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="set-sec">
+            <h2 class="set-sec-title">App</h2>
+            <div class="card set-card">
+              <div class="set-row">
+                <span class="set-ico glyph" data-icon="power"></span>
+                <label for="setting-autostart" class="set-text">
+                  <b>Start with Windows</b>
+                  <span class="hint-sm">Launch Multi LLM automatically when you sign in.</span>
+                </label>
+                <input type="checkbox" class="switch" id="setting-autostart" />
+              </div>
+              <div class="set-row">
+                <span class="set-ico glyph" data-icon="download"></span>
+                <label for="setting-auto-update" class="set-text">
+                  <b>Check for updates automatically</b>
+                  <span class="hint-sm">Looks for a new version when the app starts.</span>
+                </label>
+                <input type="checkbox" class="switch" id="setting-auto-update" />
+              </div>
+              <div class="set-row">
+                <span class="set-ico glyph" data-icon="download"></span>
+                <div class="set-text">
+                  <b>Check for updates</b>
+                  <span class="hint-sm">Look for a newer version of Multi LLM.</span>
+                </div>
+                <div class="update-row">
+                  <span id="update-status" class="update-status"></span>
+                  <button class="btn sm" id="setting-check-update">Check now</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="set-sec">
+            <h2 class="set-sec-title">Data</h2>
+            <div class="card set-card">
+              <button class="set-row set-row-btn" id="setting-export-config">
+                <span class="set-ico glyph" data-icon="export"></span>
+                <span class="set-text">
+                  <b>Export config</b>
+                  <span class="hint-sm">Providers, models and settings &mdash; optionally without API keys.</span>
+                </span>
+              </button>
+              <button class="set-row set-row-btn" id="setting-import-config">
+                <span class="set-ico glyph" data-icon="import"></span>
+                <span class="set-text">
+                  <b>Import config</b>
+                  <span class="hint-sm">Merge a previously exported config file back in.</span>
+                </span>
+              </button>
+              <button class="set-row set-row-btn" id="setting-export-usage">
+                <span class="set-ico glyph" data-icon="chart"></span>
+                <span class="set-text">
+                  <b>Export usage</b>
+                  <span class="hint-sm">Token consumption as JSON.</span>
+                </span>
+              </button>
+            </div>
+          </section>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div id="dialog-root"></div>
+  <div id="auth-root"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Gilt ab Repo-Root (= Build-Kontext, siehe docker/docker-compose.yml).
+# Hält den Build-Kontext schlank (sonst landen GBs an Build-Artefakten im Daemon).
+node_modules
+dist
+src-tauri/target
+.kilo
+.git
+
+# Keine Platzhirsche im Build-Kontext: Backups, Media und Docs werden nicht
+# gebraucht (2,2 GB Backup-Zip würde jeden Build blockieren).
+BackupLLM.zip
+*.zip
+Trailer
+Website V1
+assets
+scripts

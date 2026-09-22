@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Multi LLM</title>
+<style>
+  :root { --bg:#141414; --card:#1e1e1e; --card2:#262626; --stroke:#2e2e2e; --tx:#ffffff; --tx2:#b8b8b8; --tx3:#808080; --acc:#e2e2e2; --ok:#6ccb5f; --bad:#ff6b6b; --edge:#4a4a4a; --edge2:#5e5e5e; --shadow:0 1px 3px rgba(0,0,0,.35); }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f3f3f3; --card:#ffffff; --card2:#f5f5f5; --stroke:#e2e2e2; --tx:#1a1a1a; --tx2:#424242; --tx3:#6e6e6e; --acc:#0f6cbd; --ok:#107c10; --bad:#c42b1c; --edge:#c9c9c9; --edge2:#a8a8a8; --shadow:0 1px 3px rgba(0,0,0,.08); }
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif; background:var(--bg); color:var(--tx); font-size:14px; padding:24px; max-width:1080px; margin:0 auto; -webkit-font-smoothing:antialiased; }
+  header { display:flex; align-items:center; gap:10px; margin-bottom:20px; }
+  .logo { width:28px;height:28px;border-radius:6px;object-fit:cover;display:block; }
+  header h1 { font-size:18px;font-weight:600;flex:1; }
+  .pill { font-size:12px;padding:4px 10px;border-radius:999px;background:var(--card2);border:1px solid var(--stroke);color:var(--tx2); }
+  .pill.on { color:var(--ok);border-color:rgba(108,203,95,.35);background:rgba(108,203,95,.08); }
+  .pill.off { color:var(--bad);border-color:rgba(255,107,107,.30);background:rgba(255,107,107,.06); }
+  button { font-family:inherit;background:var(--card);border:1px solid var(--edge);border-radius:4px;padding:6px 14px;font-size:13px;cursor:pointer;color:var(--tx);font-weight:600;transition:background 80ms ease; }
+  button:hover { background:var(--card2); border-color:var(--edge2); }
+  .grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:18px; }
+  .stat { background:var(--card);border:1px solid var(--stroke);border-radius:8px;padding:14px 16px;box-shadow:var(--shadow); }
+  .stat .v { font-size:16px;font-weight:600;word-break:break-all; }
+  .stat .k { font-size:12px;color:var(--tx3);margin-top:2px; }
+  h2 { font-weight:600;color:var(--tx2);margin:22px 0 10px;text-transform:uppercase;letter-spacing:.4px;font-size:12px; }
+  .card { background:var(--card);border:1px solid var(--stroke);border-radius:8px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow); }
+  table { width:100%;border-collapse:collapse;font-size:13px; }
+  th { text-align:left;font-size:11.5px;text-transform:uppercase;color:var(--tx3);padding:8px 10px;border-bottom:1px solid var(--stroke);font-weight:600;letter-spacing:.3px; }
+  td { padding:8px 10px;border-bottom:1px solid var(--stroke); }
+  tr:last-child td { border-bottom:none; }
+  td.num, th.num { text-align:right;font-variant-numeric:tabular-nums;font-family:Consolas,ui-monospace,monospace;font-size:12.5px; }
+  .prov { display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px; }
+  .prov:last-child { margin-bottom:0; }
+  .pid { font-weight:600;min-width:110px; }
+  .purl { color:var(--tx3);font-family:Consolas,monospace;font-size:12px; }
+  .chip { display:inline-block;font-size:12px;padding:2px 8px;border-radius:4px;background:rgba(76,194,255,.12);color:var(--acc);margin:2px 4px 2px 0; }
+  .chip.dis { background:rgba(128,128,128,.14);color:var(--tx3);text-decoration:line-through; }
+  .nokey { color:var(--bad);font-size:11px;margin-left:auto; }
+  .chart-wrap { overflow-x:auto; }
+  .muted { color:var(--tx3);font-size:12.5px; }
+  footer { margin-top:26px;color:var(--tx3);font-size:12px;text-align:center; }
+  footer a { color:var(--acc); }
+</style>
+</head>
+<body>
+  <header>
+    <img class="logo" src="/logo.png" alt="Multi LLM" />
+    <h1>Multi LLM</h1>
+    <span class="pill off" id="state-pill">checking</span>
+    <button id="btn-refresh">Refresh</button>
+  </header>
+
+  <div class="grid">
+    <div class="stat"><div class="v" id="s-port">&mdash;</div><div class="k">Port</div></div>
+    <div class="stat"><div class="v" id="s-base">&mdash;</div><div class="k">Base URL (this device)</div></div>
+    <div class="stat"><div class="v" id="s-lan">&mdash;</div><div class="k">LAN</div></div>
+    <div class="stat"><div class="v" id="s-models">&mdash;</div><div class="k">Enabled models</div></div>
+  </div>
+
+  <h2>Providers &amp; models</h2>
+  <div class="card" id="providers"><span class="muted">Loading&hellip;</span></div>
+
+  <h2>Usage</h2>
+  <div class="grid">
+    <div class="stat"><div class="v" id="u-ok">0</div><div class="k">Successful requests (all time)</div></div>
+    <div class="stat"><div class="v" id="u-fail">0</div><div class="k">Failed attempts</div></div>
+    <div class="stat"><div class="v" id="u-in">0</div><div class="k">Input tokens</div></div>
+    <div class="stat"><div class="v" id="u-out">0</div><div class="k">Output tokens</div></div>
+  </div>
+  <div class="card chart-wrap" id="chart"></div>
+  <div class="card">
+    <table>
+      <thead><tr><th>Model</th><th class="num">Requests</th><th class="num">Failed</th><th class="num">Input</th><th class="num">Output</th></tr></thead>
+      <tbody id="usage-body"></tbody>
+    </table>
+    <p class="muted" id="usage-empty" style="padding:8px 4px;">No usage recorded yet.</p>
+  </div>
+
+  <footer>Read-only overview &middot; <a href="/">To management (login)</a> &middot; OpenAI-compatible endpoint &middot; model <b>multillm</b> load-balances, enabled model ids route directly.</footer>
+<script src="/dashboard.js" defer></script>
+</body>
+</html>

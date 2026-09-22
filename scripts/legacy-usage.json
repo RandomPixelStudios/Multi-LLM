@@ -1,0 +1,12 @@
+[
+  {
+    "providerId": "legacyprov",
+    "modelId": "old-model",
+    "requestsOk": 2,
+    "requestsFailed": 1,
+    "inputTokens": 100,
+    "outputTokens": 50,
+    "estimated": true,
+    "lastUsedMs": 1787304641465
+  }
+]

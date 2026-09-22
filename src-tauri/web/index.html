@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Multi LLM</title>
+<link rel="icon" type="image/png" href="/logo.png" />
+<link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <header class="topbar">
+    <img class="logo" src="/logo.png" alt="Multi LLM" />
+    <h1>Multi LLM</h1>
+    <span class="pill off" id="state-pill">…</span>
+    <span class="flex"></span>
+    <span class="userchip hidden" id="userchip" title="Benutzerverwaltung">
+      <span class="avatar" id="uavatar">?</span>
+      <span id="uname">–</span>
+    </span>
+    <button id="btn-logout" class="hidden" title="Log out">Log out</button>
+  </header>
+
+  <div class="layout">
+    <nav class="sidenav" id="sidenav">
+      <button data-tab="models" class="active">Models</button>
+      <button data-tab="providers">Providers</button>
+      <button data-tab="virtual">Virtual Models</button>
+      <button data-tab="api">API</button>
+      <button data-tab="usage">Usage</button>
+      <button data-tab="settings">Settings</button>
+      <button data-tab="users">Users</button>
+    </nav>
+    <main id="view"></main>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+<script src="/presets.js" defer></script>
+<script src="/app.js" defer></script>
+<script src="/app-providers.js" defer></script>
+<script src="/app-models.js" defer></script>
+<script src="/app-api.js" defer></script>
+<script src="/app-usage.js" defer></script>
+<script src="/app-settings.js" defer></script>
+</body>
+</html>
