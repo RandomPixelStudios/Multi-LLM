@@ -16,9 +16,10 @@
 //!   active user's providers, models, keys - and binds their personal port.
 //! - The session lives only in memory: closing the app logs the user out, so
 //!   the next start always shows the login screen again.
-//! - Passwords are hashed with a per-user random salt (UUID v4) and an
-//!   iterated SHA-256 KDF (`v1$<iters>$<salt>$<hex>`), reusing the existing
-//!   dependency-free SHA-256 in `settings` - no new crates required.
+//! - Passwords are hashed with argon2id (PHC string, `$argon2id$...`) and a
+//!   per-hash random salt. Accounts created by older releases still carry the
+//!   legacy iterated SHA-256 format (`v1$<iters>$<salt>$<hex>`); those keep
+//!   working and are transparently upgraded to argon2id on the next login.
 
 use crate::proxy::AppState;
 use serde::{Deserialize, Serialize};
@@ -39,12 +40,14 @@ const USER_FILES: [&str; 4] = [
     "extra_key_usage.json",
 ];
 
-const HASH_VERSION: &str = "v1";
-const HASH_ITERATIONS: u32 = 40_000;
+/// Legacy pre-argon2 format: iterated SHA-256 (`v1$<iters>$<salt>$<hex>`).
+/// Still verified so existing accounts keep working; upgraded on next login.
+/// The iteration count is stored inside each hash, so it is per-account.
+const LEGACY_HASH_VERSION: &str = "v1";
 /// First personal port; every new user gets max(used)+1 so concurrent
 /// instances (e.g. on a shared server) never collide.
 const BASE_PORT: u16 = 8123;
-const MIN_PASSWORD_LEN: usize = 4;
+pub const MIN_PASSWORD_LEN: usize = 10;
 
 /// OAuth linkage chosen during onboarding. Real verification happens later;
 /// for now the choice is only recorded ("Continue without login" = None).
@@ -190,15 +193,22 @@ fn find_user<'a>(file: &'a UsersFile, username: &str) -> Option<&'a UserRecord> 
         .find(|u| u.username.eq_ignore_ascii_case(username.trim()))
 }
 
-/// Salted + stretched password hash using the crate's dependency-free
-/// SHA-256. Format: `v1$<iterations>$<salt-hex>$<hex>`.
-fn hash_password(password: &str) -> String {
-    let salt = uuid::Uuid::new_v4().simple().to_string();
-    let hex = stretch(password, &salt, HASH_ITERATIONS);
-    format!("{HASH_VERSION}${HASH_ITERATIONS}${salt}${hex}")
+/// argon2id password hash (PHC string format, per-hash random 128-bit salt).
+/// Returns `Result` because the hasher can only fail on invalid salt/params -
+/// both are produced locally, so callers treat an error as a hard failure.
+fn hash_password(password: &str) -> Result<String, String> {
+    use argon2::password_hash::{PasswordHasher, SaltString};
+    let salt = SaltString::encode_b64(uuid::Uuid::new_v4().as_bytes())
+        .map_err(|e| format!("cannot build password salt: {e}"))?;
+    let hash = argon2::Argon2::default()
+        .hash_password(password.as_bytes(), salt.as_salt())
+        .map_err(|e| format!("cannot hash password: {e}"))?;
+    Ok(hash.to_string())
 }
 
-fn stretch(password: &str, salt: &str, iterations: u32) -> String {
+/// Legacy KDF kept only so old accounts can still log in. Format:
+/// `v1$<iterations>$<salt-hex>$<hex>`.
+fn stretch_legacy(password: &str, salt: &str, iterations: u32) -> String {
     let mut hex = crate::settings::sha256_hex(format!("{salt}::{password}").as_bytes());
     for _ in 1..iterations {
         hex = crate::settings::sha256_hex(format!("{hex}:{salt}:{password}").as_bytes());
@@ -206,14 +216,31 @@ fn stretch(password: &str, salt: &str, iterations: u32) -> String {
     hex
 }
 
+/// Verify a password against its stored hash, supporting both the current
+/// argon2id format and the legacy `v1$...` format.
 fn verify_password(password: &str, stored: &str) -> bool {
+    if stored.starts_with("$argon2") {
+        use argon2::password_hash::{PasswordHash, PasswordVerifier};
+        return PasswordHash::new(stored)
+            .map(|parsed| {
+                argon2::Argon2::default()
+                    .verify_password(password.as_bytes(), &parsed)
+                    .is_ok()
+            })
+            .unwrap_or(false);
+    }
+    verify_legacy(password, stored)
+}
+
+/// Constant-time check of a legacy `v1$<iters>$<salt>$<hex>` hash.
+fn verify_legacy(password: &str, stored: &str) -> bool {
     let mut parts = stored.split('$');
     let (Some(ver), Some(iters), Some(salt), Some(expected)) =
         (parts.next(), parts.next(), parts.next(), parts.next())
     else {
         return false;
     };
-    if ver != HASH_VERSION || parts.next().is_some() {
+    if ver != LEGACY_HASH_VERSION || parts.next().is_some() {
         return false;
     }
     let Ok(iters) = iters.parse::<u32>() else {
@@ -222,7 +249,7 @@ fn verify_password(password: &str, stored: &str) -> bool {
     if iters == 0 || iters > 1_000_000 {
         return false;
     }
-    let actual = stretch(password, salt, iters);
+    let actual = stretch_legacy(password, salt, iters);
     // Fixed-length hex compare without early length oracle.
     actual.len() == expected.len()
         && actual
@@ -230,6 +257,32 @@ fn verify_password(password: &str, stored: &str) -> bool {
             .zip(expected.bytes())
             .fold(0u8, |acc, (a, b)| acc | (a ^ b))
             == 0
+}
+
+/// Transparently upgrade a still-legacy password hash to argon2id after a
+/// successful login. Called with the plaintext password we just verified;
+/// failures only mean the old format stays in place a bit longer.
+fn upgrade_password_hash(username: &str, password: &str) {
+    let mut file = load_file();
+    let Some(rec) = file
+        .users
+        .iter_mut()
+        .find(|u| u.username.eq_ignore_ascii_case(username.trim()))
+    else {
+        return;
+    };
+    if rec.pass_hash.starts_with("$argon2") {
+        return;
+    }
+    match hash_password(password) {
+        Ok(h) => {
+            rec.pass_hash = h;
+            if let Err(e) = save_file(&file) {
+                eprintln!("users: cannot upgrade password hash for '{username}': {e}");
+            }
+        }
+        Err(e) => eprintln!("users: cannot upgrade password hash for '{username}': {e}"),
+    }
 }
 
 /// Erster Port für Benutzer-Server. Per MULTI_LLM_USER_PORT_BASE änderbar
@@ -536,7 +589,7 @@ pub async fn create_user(
 
     let rec = UserRecord {
         username: name,
-        pass_hash: hash_password(&password),
+        pass_hash: hash_password(&password)?,
         port,
         // Der allererste Benutzer ist Admin (sieht den Benutzer-Tab).
         is_admin: file.users.is_empty(),
@@ -576,6 +629,7 @@ pub async fn login_core(
     if !verify_password(password, &rec.pass_hash) {
         return Err("Unknown user or wrong password.".into());
     }
+    upgrade_password_hash(&rec.username, password);
     if is_scoped() {
         // Einzelbenutzer-Server (Docker-Child): Das Profil dieses Prozesses
         // ist bereits das des Benutzers - nur die Session setzen, keine
@@ -712,7 +766,9 @@ pub fn check_password(username: &str, password: &str) -> Result<UserPublic, Stri
     if !verify_password(password, &rec.pass_hash) {
         return Err("Unknown user or wrong password.".into());
     }
-    Ok(UserPublic::from(rec))
+    let public = UserPublic::from(rec);
+    upgrade_password_hash(&public.username, password);
+    Ok(public)
 }
 
 /// Auto-logout when the window is closed (incl. hide-to-tray): snapshot the
@@ -748,12 +804,34 @@ mod user_tests {
 
     #[test]
     fn password_roundtrip() {
-        let h = hash_password("secret-123");
-        assert!(h.starts_with("v1$"));
-        assert!(verify_password("secret-123", &h));
-        assert!(!verify_password("secret-124", &h));
+        let h = hash_password("correct-horse-1").unwrap();
+        assert!(h.starts_with("$argon2id$"), "expected argon2id, got {h}");
+        assert!(verify_password("correct-horse-1", &h));
+        assert!(!verify_password("correct-horse-2", &h));
         assert!(!verify_password("", &h));
-        assert!(!verify_password("secret-123", "garbage"));
+        assert!(!verify_password("correct-horse-1", "garbage"));
+        // Same password must still produce a different hash (fresh salt).
+        assert_ne!(h, hash_password("correct-horse-1").unwrap());
+    }
+
+    #[test]
+    fn legacy_hash_still_verifies() {
+        // Format written by releases up to 1.0.5 - must keep working so no
+        // account is locked out by the argon2 switch.
+        let legacy = {
+            let salt = "00112233445566778899aabbccddeeff";
+            let hex = stretch_legacy("old-password-1", salt, 100);
+            format!("v1$100${salt}${hex}")
+        };
+        assert!(verify_password("old-password-1", &legacy));
+        assert!(!verify_password("old-password-2", &legacy));
+        assert!(!verify_password("old-password-1", "v1$100$00$00"));
+    }
+
+    #[test]
+    fn minimum_password_length_is_enforced() {
+        assert_eq!(MIN_PASSWORD_LEN, 10);
+        assert!("short".len() < MIN_PASSWORD_LEN);
     }
 
     #[test]

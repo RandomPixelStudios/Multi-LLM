@@ -107,7 +107,7 @@
     const body = shell("Create user",
       "Just username + password. The API key is auto-created and never changes.",
       '<div class="field"><label>Username</label><input id="w-name" type="text" autocomplete="username" placeholder="e.g. anna" /></div>' +
-      '<div class="field"><label>Password (min. 4 chars)</label><input id="w-pw" type="password" autocomplete="new-password" /></div>' +
+      '<div class="field"><label>Password (min. 10 chars)</label><input id="w-pw" type="password" autocomplete="new-password" /></div>' +
       '<div class="field"><label>Repeat password</label><input id="w-pw2" type="password" autocomplete="new-password" /></div>' +
       '<div class="err" id="w-err"></div>' +
       '<div class="rowactions">' + (backToLogin ? '<button id="w-back">Back</button>' : '') +
@@ -118,7 +118,7 @@
       const n = name.value.trim();
       if (n.length < 2) { err.textContent = "Username needs at least 2 characters."; name.focus(); return; }
       if (!/^[A-Za-z0-9_-]+$/.test(n)) { err.textContent = "Only letters, digits, _ and -."; name.focus(); return; }
-      if (pw.value.length < 4) { err.textContent = "Password needs at least 4 characters."; pw.focus(); return; }
+      if (pw.value.length < 10) { err.textContent = "Password needs at least 10 characters."; pw.focus(); return; }
       if (pw.value !== pw2.value) { err.textContent = "Passwords do not match."; pw2.focus(); return; }
       err.textContent = "";
       try {

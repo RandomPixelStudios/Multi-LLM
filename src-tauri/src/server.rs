@@ -12,6 +12,7 @@ use crate::proxy::{
     self, admin_guard, AppState, ResolveRule, ResolveState,
 };
 use axum::{
+    extract::DefaultBodyLimit,
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::{delete, get, post},
@@ -45,13 +46,6 @@ impl Clone for ServerRegistry {
     }
 }
 
-fn subtle_eq(a: &str, b: &str) -> bool {
-    if a.len() != b.len() {
-        return false;
-    }
-    a.bytes().zip(b.bytes()).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
-}
-
 impl ServerRegistry {
     /// Baut alle Profile aus users.json + deren Dateien.
     pub fn load_all(dir: PathBuf) -> Result<Arc<Self>, String> {
@@ -64,7 +58,6 @@ impl ServerRegistry {
         }
         Ok(reg)
     }
-
     /// Baut (neu) das Profil eines Benutzers aus dessen Dateien.
     pub fn refresh_user(&self, username: &str) -> Result<(), String> {
         let state = build_profile(&self.dir, username)?;
@@ -92,6 +85,8 @@ impl ServerRegistry {
     }
 
     /// Profil per Bearer-Key: erst lokale Keys, dann Extra-Keys.
+    /// Vergleiche laufen konstantzeitig und ohne Key-Clone pro Profil - bei
+    /// vielen Kontern wäre das sonst ein Allokations-Hammer pro Request.
     pub fn by_key(&self, headers: &HeaderMap) -> Option<Arc<AppState>> {
         let tok = proxy::bearer_token(headers)?;
         if tok.is_empty() {
@@ -99,14 +94,14 @@ impl ServerRegistry {
         }
         let profiles = self.profiles.read().unwrap_or_else(PoisonError::into_inner);
         for st in profiles.values() {
-            let local = st.local_key.read().unwrap_or_else(PoisonError::into_inner).clone();
-            if !local.is_empty() && subtle_eq(&local, &tok) {
+            let local = st.local_key.read().unwrap_or_else(PoisonError::into_inner);
+            if !local.is_empty() && proxy::ct_eq(&local, &tok) {
                 return Some(st.clone());
             }
         }
         for st in profiles.values() {
             let cfg = st.config.read().unwrap_or_else(PoisonError::into_inner);
-            if cfg.api.extra_api_keys.iter().any(|k| subtle_eq(&k.key, &tok)) {
+            if cfg.api.extra_api_keys.iter().any(|k| proxy::ct_eq(&k.key, &tok)) {
                 return Some(st.clone());
             }
         }
@@ -185,16 +180,16 @@ impl ResolveState for Arc<ServerRegistry> {
                 Err(proxy::mgmt_denied())
             }
             ResolveRule::Admin => {
-                if let Some(st) = self.by_session(headers) {
-                    let name = proxy::session_user_from_headers(headers).unwrap_or_default();
+                // Nur die Admin-Session darf Benutzerkonten verwalten.
+                // Früher genüste hier schon der lokale API-Key eines beliebigen
+                // Profils (`manage_allowed` liefert für den Default-Key immer
+                // true) - damit konnte jeder Nutzer sein eigenes Profil zum
+                // Sprungbrett für die Kontoverwaltung machen.
+                if let Some(name) = proxy::session_user_from_headers(headers) {
                     if admin_guard(headers) && crate::users::is_admin_user(&name) {
-                        return Ok(st);
-                    }
-                    return Err(proxy::mgmt_denied());
-                }
-                if let Some(st) = self.by_key(headers) {
-                    if proxy::manage_allowed(&st, headers) {
-                        return Ok(st);
+                        if let Some(st) = self.get(&name) {
+                            return Ok(st);
+                        }
                     }
                 }
                 Err(proxy::mgmt_denied())
@@ -292,9 +287,17 @@ fn server_router(reg: Arc<ServerRegistry>) -> Router {
         .route("/api/usage/delete", post(proxy::api_usage_delete::<Arc<ServerRegistry>>))
         .route("/v1/models", get(proxy::list_models::<Arc<ServerRegistry>>))
         .route("/v1/models/{model}", get(proxy::get_model::<Arc<ServerRegistry>>))
-        .route("/v1/responses", post(proxy::responses_handler::<Arc<ServerRegistry>>))
-        .route("/v1/{*rest}", post(proxy::forward::<Arc<ServerRegistry>>))
+        .route(
+            "/v1/responses",
+            post(proxy::responses_handler::<Arc<ServerRegistry>>)
+                .layer(DefaultBodyLimit::max(proxy::INFERENCE_BODY_LIMIT)),
+        )
+        .route(
+            "/v1/{*rest}",
+            post(proxy::forward::<Arc<ServerRegistry>>).layer(DefaultBodyLimit::max(proxy::INFERENCE_BODY_LIMIT)),
+        )
         .fallback(proxy::fallback)
+        .layer(DefaultBodyLimit::max(proxy::MGMT_BODY_LIMIT))
         .layer(axum::middleware::from_fn_with_state(
             reg.clone(),
             proxy::require_local_host::<Arc<ServerRegistry>>,
@@ -321,6 +324,9 @@ pub fn serve(dir: PathBuf) {
     for st in reg.profiles.read().unwrap_or_else(PoisonError::into_inner).values() {
         proxy::spawn_periodic_health_checks(st.clone());
     }
+    // Sessions und Login-Throttles laufend aufräumen (sonst wachsen beide
+    // Maps auf einem lange laufenden Server ungebremst).
+    proxy::spawn_session_maintenance();
     let port = proxy::server_port();
     let expose = match std::env::var("MULTI_LLM_EXPOSE") {
         Ok(v) => {

@@ -1794,7 +1794,9 @@ struct Candidate {
 }
 
 fn candidates(state: &AppState) -> Vec<Candidate> {
-    let cfg = state.config.read().unwrap_or_else(PoisonError::into_inner).clone();
+    // Bewusst ohne Klon der gesamten Config: Der Read-Lock reicht für den
+    // Aufbau - pro Request entstehen nur die paar benötigten Strings.
+    let cfg = state.config.read().unwrap_or_else(PoisonError::into_inner);
     let mut out = Vec::new();
     for p in &cfg.providers {
         for m in &p.models {
@@ -1816,7 +1818,7 @@ fn candidates(state: &AppState) -> Vec<Candidate> {
 /// Compares SHA-256 digests of both sides in constant time, so neither the
 /// length nor any prefix of a valid API key can be probed via response timing
 /// (relevant when the proxy is exposed to the LAN).
-fn ct_eq(a: &str, b: &str) -> bool {
+pub(crate) fn ct_eq(a: &str, b: &str) -> bool {
     let da = crate::settings::sha256_hex(a.as_bytes());
     let db = crate::settings::sha256_hex(b.as_bytes());
     let (a, b) = (da.as_bytes(), db.as_bytes());
@@ -5921,7 +5923,7 @@ pub(crate) fn manage_allowed(state: &AppState, headers: &HeaderMap) -> bool {
             cfg.api
                 .extra_api_keys
                 .iter()
-                .find(|k| k.key == key)
+                .find(|k| ct_eq(&k.key, &key))
                 .map(|k| k.is_admin)
                 .unwrap_or(false)
         }
@@ -5970,39 +5972,184 @@ pub fn server_port() -> u16 {
         .unwrap_or(5000)
 }
 
-static WEB_SESSIONS: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
+/// One browser session: the account behind the token plus its bookkeeping
+/// timestamps (all in ms since epoch, see [`now_ms`]).
+struct SessionEntry {
+    user: String,
+    created_ms: u64,
+    /// Last request carrying this token; refreshed on every use (sliding
+    /// idle window).
+    last_seen_ms: u64,
+}
 
-fn web_sessions() -> &'static Mutex<HashMap<String, String>> {
+/// Sessions without any request for this long are dropped on next use.
+const SESSION_IDLE_MS: u64 = 12 * 60 * 60 * 1000;
+/// Hard upper bound: a token never lives longer than this, no matter how
+/// often it is used.
+const SESSION_MAX_AGE_MS: u64 = 7 * 24 * 60 * 60 * 1000;
+/// Cap on concurrently tracked tokens so repeated logins (or a flood of
+/// them) cannot grow the map without bound. Oldest-idle entries are evicted.
+const SESSION_MAX_ENTRIES: usize = 4096;
+
+static WEB_SESSIONS: OnceLock<Mutex<HashMap<String, SessionEntry>>> = OnceLock::new();
+
+fn web_sessions() -> &'static Mutex<HashMap<String, SessionEntry>> {
     WEB_SESSIONS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-/// Username behind the session cookie, if any.
+/// Expiry decision with an injected clock so tests can travel in time.
+fn session_expired_at(e: &SessionEntry, now: u64) -> bool {
+    now.saturating_sub(e.last_seen_ms) > SESSION_IDLE_MS
+        || now.saturating_sub(e.created_ms) > SESSION_MAX_AGE_MS
+}
+
+fn session_expired(e: &SessionEntry) -> bool {
+    session_expired_at(e, now_ms())
+}
+
+/// Store a freshly minted token for `user`, evicting the least recently used
+/// entries when the cap is hit. Returns false when the map is full of
+/// *fresh* sessions - i.e. when someone is flooding logins.
+fn insert_session(token: String, user: String) -> bool {
+    let mut map = web_sessions().lock().unwrap_or_else(PoisonError::into_inner);
+    map.retain(|_, e| !session_expired(e));
+    if map.len() >= SESSION_MAX_ENTRIES {
+        // Drop the least recently used session to make room.
+        let oldest = map
+            .iter()
+            .min_by_key(|(_, e)| e.last_seen_ms)
+            .map(|(k, _)| k.clone());
+        match oldest {
+            Some(k) => {
+                map.remove(&k);
+            }
+            None => return false,
+        }
+    }
+    let now = now_ms();
+    map.insert(
+        token,
+        SessionEntry {
+            user,
+            created_ms: now,
+            last_seen_ms: now,
+        },
+    );
+    true
+}
+
+/// Forget every token belonging to `user` (logout, account deleted).
+fn forget_user_sessions(user: &str) {
+    web_sessions()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .retain(|_, e| !e.user.eq_ignore_ascii_case(user));
+}
+
+/// Drop expired sessions; called periodically and opportunistically.
+pub(crate) fn prune_sessions() -> usize {
+    let mut map = web_sessions().lock().unwrap_or_else(PoisonError::into_inner);
+    let before = map.len();
+    map.retain(|_, e| !session_expired(e));
+    before - map.len()
+}
+
+/// Username behind the session cookie, if any. Refreshes the sliding idle
+/// window and evicts the token when it has expired.
 pub(crate) fn session_user_from_headers(headers: &HeaderMap) -> Option<String> {
     let cookie = headers.get(header::COOKIE)?.to_str().ok()?;
     for part in cookie.split(';') {
-        if let Some(tok) = part.trim().strip_prefix("ml_session=") {
-            let tok = tok.trim();
-            if tok.is_empty() {
-                return None;
-            }
-            return web_sessions()
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .get(tok)
-                .cloned();
+        let Some(kv) = part.trim().strip_prefix(WEB_SESSION_COOKIE) else {
+            continue;
+        };
+        let Some(tok) = kv.strip_prefix('=') else {
+            continue;
+        };
+        let tok = tok.trim();
+        if tok.is_empty() {
+            return None;
         }
+        let mut map = web_sessions().lock().unwrap_or_else(PoisonError::into_inner);
+        let now = now_ms();
+        return match map.get_mut(tok) {
+            Some(e) if !session_expired(e) => {
+                e.last_seen_ms = now;
+                Some(e.user.clone())
+            }
+            Some(_) => {
+                map.remove(tok);
+                None
+            }
+            None => None,
+        };
     }
     None
 }
 
-fn set_session_cookie(token: &str) -> String {
-    // Bewusst OHNE Max-Age: Browser-Session - Schließen meldet ab
-    // (wie die Desktop-App beim Beenden).
-    format!("{WEB_SESSION_COOKIE}={token}; HttpOnly; Path=/; SameSite=Lax")
+/// `Secure` is opt-in via `MULTI_LLM_COOKIE_SECURE=1` (or a TLS-terminating
+/// proxy announcing `x-forwarded-proto: https`), because plain-http LAN
+/// deployments would otherwise get a cookie the browser refuses to send.
+fn session_cookie_secure(headers: Option<&HeaderMap>) -> bool {
+    if let Ok(v) = std::env::var("MULTI_LLM_COOKIE_SECURE") {
+        let t = v.trim().to_lowercase();
+        if t == "1" || t == "true" || t == "yes" {
+            return true;
+        }
+        if t == "0" || t == "false" || t == "no" {
+            return false;
+        }
+    }
+    forwarded_proto_secure(headers)
 }
 
-fn clear_session_cookie() -> String {
-    format!("{WEB_SESSION_COOKIE}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0")
+/// Pure part of [`session_cookie_secure`]: does a reverse proxy announce
+/// TLS termination? Separated so it can be tested without touching env vars.
+fn forwarded_proto_secure(headers: Option<&HeaderMap>) -> bool {
+    headers
+        .and_then(|h| h.get("x-forwarded-proto"))
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.eq_ignore_ascii_case("https"))
+        .unwrap_or(false)
+}
+
+fn set_session_cookie(token: &str, secure: bool) -> String {
+    // Bewusst OHNE Max-Age: Browser-Session - Schließen meldet ab
+    // (wie die Desktop-App beim Beenden). Die Lebensdauer regelt der
+    // Server über SESSION_IDLE_MS/SESSION_MAX_AGE_MS.
+    format!(
+        "{WEB_SESSION_COOKIE}={token}; HttpOnly; Path=/; SameSite=Lax{}",
+        if secure { "; Secure" } else { "" }
+    )
+}
+
+fn clear_session_cookie(secure: bool) -> String {
+    format!(
+        "{WEB_SESSION_COOKIE}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0{}",
+        if secure { "; Secure" } else { "" }
+    )
+}
+
+/// Background janitor: prunes expired sessions and the per-IP auth throttles
+/// so neither map can grow forever on a long-running server. Started once
+/// from `serve()` and from the desktop bootstrap.
+pub(crate) fn spawn_session_maintenance() {
+    static STARTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if STARTED
+        .compare_exchange(
+            false,
+            true,
+            Ordering::SeqCst,
+            Ordering::SeqCst,
+        )
+        .is_err()
+    {
+        return;
+    }
+    std::thread::spawn(|| loop {
+        std::thread::sleep(std::time::Duration::from_secs(60));
+        prune_sessions();
+        prune_login_throttles();
+    });
 }
 
 /* ---- Login-Throttle (nur Server-Modus) ----
@@ -6036,6 +6183,21 @@ fn login_throttle_failed(ip: std::net::IpAddr) {
 
 fn login_throttle_reset(ip: std::net::IpAddr) {
     login_throttle_map().lock().unwrap_or_else(PoisonError::into_inner).remove(&ip);
+}
+
+/// Drop throttle entries whose window has long passed. Runs from the
+/// session-maintenance thread; without it the maps grow forever (one entry
+/// per distinct source IP that ever failed to authenticate).
+pub(crate) fn prune_login_throttles() {
+    let now = now_ms();
+    login_throttle_map()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .retain(|_, (_, since)| now.saturating_sub(*since) < 60_000);
+    auth_throttle()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .retain(|_, &mut (_, until)| until > now && now.saturating_sub(until) < 60_000);
 }
 
 /// Benutzerverwaltung (löschen): nur Admin-Session (+ Header) oder der
@@ -6075,7 +6237,63 @@ pub(crate) async fn api_auth_users() -> Response {
     (StatusCode::OK, Json(json!(users))).into_response()
 }
 
-pub(crate) async fn api_auth_signup<S: ResolveState>(State(s): State<S>, Json(body): Json<Value>) -> Response {
+/// Are new accounts allowed to be created right now?
+///
+/// - Desktop (`Arc<AppState>`): always - onboarding is a local, trusted user.
+/// - Server (`--serve`): only while no account exists (the very first one
+///   *must* be creatable, otherwise nobody could ever log in), when an admin
+///   session posts the request, or when the operator explicitly opts in with
+///   `MULTI_LLM_ALLOW_SIGNUP=1`. Default for a running server is CLOSED so an
+///   exposed port cannot be flooded with profiles.
+fn signup_allowed(headers: &HeaderMap) -> bool {
+    if !is_server_mode() {
+        return true;
+    }
+    if let Ok(v) = std::env::var("MULTI_LLM_ALLOW_SIGNUP") {
+        let t = v.trim().to_lowercase();
+        if t == "1" || t == "true" || t == "yes" {
+            return true;
+        }
+        if t == "0" || t == "false" || t == "no" {
+            // Explicitly closed: not even the bootstrap case opens it.
+            return session_is_admin(headers);
+        }
+    }
+    session_is_admin(headers) || crate::users::account_list().is_empty()
+}
+
+/// True when the request carries a session of the admin account.
+fn session_is_admin(headers: &HeaderMap) -> bool {
+    session_user_from_headers(headers)
+        .map(|u| crate::users::is_admin_user(&u))
+        .unwrap_or(false)
+}
+
+pub(crate) async fn api_auth_signup<S: ResolveState>(
+    State(s): State<S>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Json(body): Json<Value>,
+) -> Response {
+    // Account creation shares the login throttle: 10 rejected attempts per
+    // minute lock the source IP for 60 s, so neither endpoint can be used to
+    // grind passwords or mass-create profiles.
+    if is_server_mode() && login_throttled(addr.ip()) {
+        return error_response(
+            StatusCode::TOO_MANY_REQUESTS,
+            "Too many attempts, try again later.".into(),
+            "rate_limited",
+            "invalid_request_error",
+        );
+    }
+    if !signup_allowed(&headers) {
+        return error_response(
+            StatusCode::FORBIDDEN,
+            "Sign-up is disabled on this server (MULTI_LLM_ALLOW_SIGNUP=0).".into(),
+            "signup_disabled",
+            "permission_error",
+        );
+    }
     let username = body
         .get("username")
         .and_then(Value::as_str)
@@ -6096,17 +6314,26 @@ pub(crate) async fn api_auth_signup<S: ResolveState>(State(s): State<S>, Json(bo
         .map(|s| s.to_string());
     match crate::users::create_user(username, password, oauth, email).await {
         Ok(u) => {
+            if is_server_mode() {
+                login_throttle_reset(addr.ip());
+            }
             // Profil sofort bereitstellen (Server lädt es in die Registry).
             s.note_user_created(&u.username);
             (StatusCode::CREATED, Json(json!(u))).into_response()
         }
-        Err(e) => bad_request(e),
+        Err(e) => {
+            if is_server_mode() {
+                login_throttle_failed(addr.ip());
+            }
+            bad_request(e)
+        }
     }
 }
 
 pub(crate) async fn api_auth_login<S: ResolveState>(
     State(s): State<S>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     Json(body): Json<Value>,
 ) -> Response {
     let username = body
@@ -6134,12 +6361,20 @@ pub(crate) async fn api_auth_login<S: ResolveState>(
                 login_throttle_reset(addr.ip());
             }
             let token = uuid::Uuid::new_v4().simple().to_string();
-            web_sessions()
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .insert(token.clone(), public.username.clone());
+            if !insert_session(token.clone(), public.username.clone()) {
+                // Map voller frischer Sessions: Logins geflutet.
+                return error_response(
+                    StatusCode::TOO_MANY_REQUESTS,
+                    "Too many active sessions, try again in a minute.".into(),
+                    "rate_limited",
+                    "invalid_request_error",
+                );
+            }
             (
-                [(header::SET_COOKIE, set_session_cookie(&token))],
+                [(
+                    header::SET_COOKIE,
+                    set_session_cookie(&token, session_cookie_secure(Some(&headers))),
+                )],
                 Json(json!(public)),
             )
                 .into_response()
@@ -6163,14 +6398,11 @@ pub(crate) async fn api_auth_logout<S: ResolveState>(
     headers: HeaderMap,
 ) -> Response {
     if let Some(user) = session_user_from_headers(&headers) {
-        web_sessions()
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .retain(|_, u| u != &user);
+        forget_user_sessions(&user);
     }
     let _ = s.logout().await;
     (
-        [(header::SET_COOKIE, clear_session_cookie())],
+        [(header::SET_COOKIE, clear_session_cookie(session_cookie_secure(Some(&headers))))],
         Json(json!({ "ok": true })),
     )
         .into_response()
@@ -6223,10 +6455,16 @@ pub(crate) async fn api_auth_delete<S: ResolveState>(
         Ok(st) => st,
         Err(r) => return r,
     };
-    // Benutzer löschen darf nur der Admin (erster Benutzer); der Key-Pfad
-    // bleibt für Ops-Zugriff bestehen.
-    if !web_admin_allowed(&state, &headers, addr) {
-        return mgmt_denied();
+    // Die Admin-Regel oben ist der einzige Zugangsschutz (Server: nur
+    // Admin-Session; Desktop/Headless: localhost-Key bzw. Session) - hier
+    // kommt kein zweiter, abweichender Check mehr.
+    if is_server_mode() && login_throttled(addr.ip()) {
+        return error_response(
+            StatusCode::TOO_MANY_REQUESTS,
+            "Too many attempts, try again later.".into(),
+            "rate_limited",
+            "invalid_request_error",
+        );
     }
     let password = body
         .get("password")
@@ -6240,16 +6478,22 @@ pub(crate) async fn api_auth_delete<S: ResolveState>(
     // as the desktop command enforces internally).
     match crate::users::delete_core(&state, &username, password.as_deref(), admin_bypass).await {
         Ok(()) => {
+            if is_server_mode() {
+                login_throttle_reset(addr.ip());
+            }
             // Sessions des gelöschten Kontos verwerfen + Profil entladen.
             s.note_user_deleted(username.trim());
             // Drop every session token of the deleted account.
-            web_sessions()
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .retain(|_, u| !u.eq_ignore_ascii_case(username.trim()));
+            forget_user_sessions(username.trim());
             (StatusCode::OK, Json(json!({ "ok": true }))).into_response()
         }
-        Err(e) => bad_request(e),
+        Err(e) => {
+            // Fehlgeschlagener Passwort-Guess zählt wie ein Fehllogin.
+            if is_server_mode() {
+                login_throttle_failed(addr.ip());
+            }
+            bad_request(e)
+        }
     }
 }
 
@@ -6729,6 +6973,12 @@ pub(crate) async fn api_import_config<S: ResolveState>(
     (StatusCode::OK, Json(json!({ "ok": true }))).into_response()
 }
 
+/// Körpergrenze für `/api`, `/login` & Co.: reicht für Konfig-Importe und
+/// hochgeladene Icons, blockiert aber Nutzungsmissbrauch mit Riesen-POSTs.
+pub(crate) const MGMT_BODY_LIMIT: usize = 8 * 1024 * 1024;
+/// Inference-Routen tragen Bilder/Dokumente im Request - großzügiger.
+pub(crate) const INFERENCE_BODY_LIMIT: usize = 64 * 1024 * 1024;
+
 fn build_router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/", get(web_index))
@@ -6777,10 +7027,17 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/v1/models/{model}", get(get_model::<Arc<AppState>>))
         // Responses API for Codex-style clients; handled before the catch-all
         // forwarder via the dedicated translation handler.
-        .route("/v1/responses", post(responses_handler::<Arc<AppState>>))
-        .route("/v1/{*rest}", post(forward::<Arc<AppState>>))
+        .route(
+            "/v1/responses",
+            post(responses_handler::<Arc<AppState>>).layer(DefaultBodyLimit::max(INFERENCE_BODY_LIMIT)),
+        )
+        .route(
+            "/v1/{*rest}",
+            post(forward::<Arc<AppState>>).layer(DefaultBodyLimit::max(INFERENCE_BODY_LIMIT)),
+        )
         .fallback(fallback)
-        .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
+        // Äußere Grenze für alles andere (Management, Login, Import).
+        .layer(DefaultBodyLimit::max(MGMT_BODY_LIMIT))
         .layer(axum_mw::from_fn_with_state(state.clone(), require_local_host::<Arc<AppState>>))
         .layer(cors_layer())
         .layer(axum_mw::from_fn(add_csp_header))
@@ -7425,5 +7682,89 @@ mod responses_api_tests {
         assert_eq!(v["response"]["usage"]["input_tokens"], 4);
         assert_eq!(v["response"]["usage"]["output_tokens"], 2);
         assert_eq!(v["response"]["usage"]["total_tokens"], 6);
+    }
+}
+
+#[cfg(test)]
+mod session_hardening_tests {
+    use super::*;
+
+    fn cookie_header(token: &str) -> HeaderMap {
+        let mut h = HeaderMap::new();
+        h.insert(
+            header::COOKIE,
+            header::HeaderValue::from_str(&format!("{WEB_SESSION_COOKIE}={token}")).unwrap(),
+        );
+        h
+    }
+
+    #[test]
+    fn session_token_roundtrip_and_forget() {
+        let tok = format!("test-{}", uuid::Uuid::new_v4().simple());
+        assert!(insert_session(tok.clone(), "alice".into()));
+        assert_eq!(session_user_from_headers(&cookie_header(&tok)).as_deref(), Some("alice"));
+        // Unknown / empty tokens never resolve.
+        assert_eq!(session_user_from_headers(&cookie_header("nope")), None);
+        let mut empty = HeaderMap::new();
+        empty.insert(
+            header::COOKIE,
+            header::HeaderValue::from_str(&format!("{WEB_SESSION_COOKIE}=")).unwrap(),
+        );
+        assert_eq!(session_user_from_headers(&empty), None);
+        // Logging out (or deleting the account) drops every token of the user.
+        forget_user_sessions("alice");
+        assert_eq!(session_user_from_headers(&cookie_header(&tok)), None);
+    }
+
+    #[test]
+    fn sessions_expire_after_idle_and_hard_max_age() {
+        let now = 1_000_000_000_000u64;
+        let entry = |created: u64, seen: u64| SessionEntry {
+            user: "alice".into(),
+            created_ms: created,
+            last_seen_ms: seen,
+        };
+        let fresh = entry(now, now);
+        assert!(!session_expired_at(&fresh, now));
+        // Still used, but alive for longer than the hard max age -> expired.
+        assert!(session_expired_at(&entry(now, now), now + SESSION_MAX_AGE_MS + 1));
+        // Recent creation but untouched for the whole idle window -> expired.
+        assert!(session_expired_at(&entry(now, now), now + SESSION_IDLE_MS + 1));
+        // Right at the boundary the session is still valid.
+        assert!(!session_expired_at(&entry(now, now), now + SESSION_IDLE_MS));
+        // An old creation with recent activity is only judged by its age.
+        assert!(!session_expired_at(
+            &entry(now - SESSION_IDLE_MS, now),
+            now
+        ));
+    }
+
+    #[test]
+    fn session_cookie_is_httponly_and_secure_only_when_asked() {
+        let plain = set_session_cookie("tok", false);
+        assert!(plain.contains("HttpOnly"));
+        assert!(plain.contains("SameSite=Lax"));
+        assert!(!plain.to_lowercase().contains("secure"));
+        let tls = set_session_cookie("tok", true);
+        assert!(tls.contains("; Secure"));
+        // Logout clears the same cookie name it set.
+        assert!(clear_session_cookie(true).contains("Max-Age=0"));
+        assert!(!clear_session_cookie(false).to_lowercase().contains("secure"));
+    }
+
+    #[test]
+    fn forwarded_proto_only_marks_https_as_secure() {
+        let mut h = HeaderMap::new();
+        h.insert(
+            header::HeaderName::from_static("x-forwarded-proto"),
+            header::HeaderValue::from_static("https"),
+        );
+        assert!(forwarded_proto_secure(Some(&h)));
+        h.insert(
+            header::HeaderName::from_static("x-forwarded-proto"),
+            header::HeaderValue::from_static("http"),
+        );
+        assert!(!forwarded_proto_secure(Some(&h)));
+        assert!(!forwarded_proto_secure(None));
     }
 }

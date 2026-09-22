@@ -886,6 +886,7 @@ fn run_single_server(state: Arc<AppState>, dir: PathBuf) {
     proxy::restart(state.clone());
     spawn_first_run_probe(dir, state.clone());
     proxy::spawn_periodic_health_checks(state.clone());
+    proxy::spawn_session_maintenance();
     // restart() binds asynchronously: give the server up to ~10 s to come up
     // (or fail) so smoke tests see a meaningful status line.
     for _ in 0..100 {
@@ -989,6 +990,8 @@ fn main() {
 
             // Ongoing ~5-min health sweep behind the Models/Providers dots.
             proxy::spawn_periodic_health_checks(state.clone());
+            // Session-/Throttle-Janitor für die eingebettete Web-Verwaltung.
+            proxy::spawn_session_maintenance();
 
             // Tray status line: read before manage() moves the Arc.
             let status_label = {

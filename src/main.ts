@@ -2487,7 +2487,7 @@ function showWizardStep1(prefill?: WizardState, backToLogin?: boolean): void {
     '<div class="auth-steps"><i class="now"></i><i></i></div>',
     '<div class="field"><label for="w-username">Username</label>' +
       '<input id="w-username" type="text" autocomplete="username" spellcheck="false" placeholder="e.g. anna" /></div>' +
-      '<div class="field"><label for="w-password">Password (min. 4 chars)</label>' +
+      '<div class="field"><label for="w-password">Password (min. 10 chars)</label>' +
       '<input id="w-password" type="password" autocomplete="new-password" placeholder="Password" /></div>' +
       '<div class="field"><label for="w-password2">Repeat password</label>' +
       '<input id="w-password2" type="password" autocomplete="new-password" placeholder="Repeat password" /></div>' +
@@ -2508,7 +2508,7 @@ function showWizardStep1(prefill?: WizardState, backToLogin?: boolean): void {
     const name = nameEl.value.trim();
     if (name.length < 2) { errEl.textContent = "Username needs at least 2 characters."; nameEl.focus(); return; }
     if (!/^[A-Za-z0-9_-]+$/.test(name)) { errEl.textContent = "Nur Buchstaben, Ziffern, '_' und '-' sind erlaubt."; nameEl.focus(); return; }
-    if (pwEl.value.length < 4) { errEl.textContent = "Password needs at least 4 characters."; pwEl.focus(); return; }
+    if (pwEl.value.length < 10) { errEl.textContent = "Password needs at least 10 characters."; pwEl.focus(); return; }
     if (pwEl.value !== pw2El.value) { errEl.textContent = "Passwords do not match."; pw2El.focus(); return; }
     errEl.textContent = "";
     w.username = name;
