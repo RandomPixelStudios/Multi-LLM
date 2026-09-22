@@ -52,6 +52,7 @@ FROM debian:bookworm-slim AS runtime
 # ist Pflicht für TLS zu den Upstream-Providern.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    curl \
     libgtk-3-0 \
     libwebkit2gtk-4.1-0 \
     libayatana-appindicator3-1 \

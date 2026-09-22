@@ -41,6 +41,14 @@ services:
       - multillm-data:/data
     # Kein automatischer Start nach Systemstart - nur manuell.
     restart: "no"
+    healthcheck:
+      # Öffentlicher Info-Endpunkt (braucht keinen Login); der Container gilt
+      # erst nach erfolgreichem Binden des Ports als "healthy".
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:5000/api/server-info"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 volumes:
   multillm-data:
