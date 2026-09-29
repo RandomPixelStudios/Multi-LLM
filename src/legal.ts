@@ -80,12 +80,17 @@ export const APP_LEGAL: LegalDoc = {
         "them from this device.\n" +
         "\n" +
         "4. The only network connection the app makes itself.\n" +
-        "If you leave “Check for updates automatically” switched on, the app contacts the GitHub " +
-        "Releases API once at start-up to ask whether a newer version exists. That request transmits " +
-        "your IP address to GitHub, Inc. (88 Colin P. Kelly Jr. St., San Francisco, CA 94107, " +
-        "United States) and is governed by the GitHub Privacy Statement. Switch the check off in " +
-        "Settings → App and no such request is made. Downloading an update from the release page is " +
-        "an action you trigger yourself and is subject to GitHub's terms.\n" +
+        "If you leave “Check for updates automatically” switched on, the app fetches a small " +
+        "JSON manifest once at start-up to ask whether a newer version exists. The manifest lives at " +
+        "randompixelstudios.github.io/Multi-LLM/update.json, which is served by GitHub, Inc. " +
+        "(88 Colin P. Kelly Jr. St., San Francisco, CA 94107, United States) and falls under the " +
+        "GitHub Privacy Statement. The request transmits your IP address, and GitHub records it in " +
+        "its server logs. The reply contains only a version number and a download link - never " +
+        "anything about your machine, your providers or your usage. Switch the check off in " +
+        "Settings → App and no such request is made. You can also point the app at a different " +
+        "manifest under Settings → App → Update server, which is how self-hosted forks ship their " +
+        "own releases. Downloading an update is an action you trigger yourself and is subject to " +
+        "GitHub's terms.\n" +
         "\n" +
         "5. Third-party providers.\n" +
         "When you send a request through the app, the provider you selected receives the prompt and " +

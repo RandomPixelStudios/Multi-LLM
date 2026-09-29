@@ -1,11 +1,21 @@
 //! Update check: fetches a small JSON manifest {"version":"x.y.z"} from a
 //! user-configured URL and compares it against the running build.
+//!
+//! The manifest lives next to the project website on GitHub Pages, so the
+//! check works without a server of ours and without an account. A user-set
+//! `update_url` always wins, which keeps self-hosted forks working.
 
 use serde::Deserialize;
 use std::sync::{Arc, PoisonError};
 use std::time::Duration;
 
 use crate::proxy::AppState;
+
+/// Built-in manifest. Used when the config carries no `update_url`, so a
+/// fresh install checks for updates without any setup.
+pub const DEFAULT_UPDATE_URL: &str =
+    "https://randompixelstudios.github.io/Multi-LLM/update.json";
+
 
 /// Shape of the remote manifest. Unknown fields are ignored so a server can
 /// ship extra metadata without breaking older clients.
@@ -28,7 +38,10 @@ fn split_version(v: &str) -> (Vec<u64>, bool) {
         Some((r, _p)) => (r, true),
         None => (v, false),
     };
-    let segs = rel.split('.').map(|p| p.trim().parse::<u64>().unwrap_or(0)).collect();
+    let segs = rel
+        .split('.')
+        .map(|p| p.trim().parse::<u64>().unwrap_or(0))
+        .collect();
     (segs, pre)
 }
 
@@ -49,20 +62,23 @@ fn version_is_newer(remote: &str, local: &str) -> bool {
     !r_pre && l_pre
 }
 
-/// Check the configured update server. Empty/unset update_url means the
-/// feature is simply not configured - that is not an error.
+/// Check the update server. A user-set `update_url` wins; without one the
+/// built-in manifest is used, so the feature works out of the box. Only an
+/// explicitly empty value disables it, which the UI never writes.
 #[tauri::command]
-pub async fn check_for_updates(
-    state: tauri::State<'_, Arc<AppState>>,
-) -> Result<String, String> {
+pub async fn check_for_updates(state: tauri::State<'_, Arc<AppState>>) -> Result<String, String> {
     // Read the shared in-memory config; re-loading settings.json here could
     // quarantine the file or exit the process from this background command,
     // which must never happen.
     let url = {
-        let cfg = state.config.read().unwrap_or_else(PoisonError::into_inner).clone();
+        let cfg = state
+            .config
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
         match cfg.update_url.as_deref().map(str::trim) {
             Some(u) if !u.is_empty() => u.to_string(),
-            _ => return Ok("No update server configured.".to_string()),
+            _ => DEFAULT_UPDATE_URL.to_string(),
         }
     };
 

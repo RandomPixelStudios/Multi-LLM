@@ -1,33 +1,41 @@
 //! Multi LLM - an OpenAI-compatible proxy that routes one virtual model
 //! ("multillm") across every enabled provider model, wrapped in a desktop UI.
 
-mod provider_test;
-mod server;
-mod users;
 mod model_test;
+mod provider_test;
 mod proxy;
 mod secrets;
+mod server;
 mod settings;
 mod update_check;
+mod users;
 
-use provider_test::test_provider;
 use model_test::{test_model, test_virtual_model};
+use provider_test::test_provider;
 use proxy::AppState;
 use serde_json::Value;
-use update_check::check_for_updates;
 use std::{
     path::PathBuf,
     sync::{Arc, PoisonError},
     time::Duration,
 };
 use tauri::Manager;
+use update_check::check_for_updates;
 
 /* ================= Tauri commands ================= */
 
 /// Frontend view of config + local key (poisoning-tolerant locking).
 fn read_public(state: &Arc<AppState>) -> Result<settings::PublicConfig, String> {
-    let cfg = state.config.read().unwrap_or_else(PoisonError::into_inner).clone();
-    let key = state.local_key.read().unwrap_or_else(PoisonError::into_inner).clone();
+    let cfg = state
+        .config
+        .read()
+        .unwrap_or_else(PoisonError::into_inner)
+        .clone();
+    let key = state
+        .local_key
+        .read()
+        .unwrap_or_else(PoisonError::into_inner)
+        .clone();
     Ok(settings::public_config(&cfg, &key, &|id| {
         matches!(state.provider_secret(id), Ok(Some(_)))
     }))
@@ -35,7 +43,11 @@ fn read_public(state: &Arc<AppState>) -> Result<settings::PublicConfig, String> 
 
 /// Combined snapshot sent back after every mutating command.
 fn snapshot(state: &Arc<AppState>) -> Result<Value, String> {
-    let st = state.status.lock().unwrap_or_else(PoisonError::into_inner).clone();
+    let st = state
+        .status
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .clone();
     Ok(serde_json::json!({
         "config": read_public(state)?,
         "status": st,
@@ -81,7 +93,10 @@ async fn upsert_provider(
 }
 
 #[tauri::command]
-async fn delete_provider(state: tauri::State<'_, Arc<AppState>>, id: String) -> Result<Value, String> {
+async fn delete_provider(
+    state: tauri::State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<Value, String> {
     proxy::admin_delete_provider(&state, &id)?;
     snapshot(&state)
 }
@@ -90,13 +105,19 @@ async fn delete_provider(state: tauri::State<'_, Arc<AppState>>, id: String) -> 
 /// different field names (OpenRouter: top_provider.context_length,
 /// vLLM: max_model_len, Groq/others: context_window); take the first hit.
 fn context_from_model(m: &Value) -> Option<u64> {
-    let keys = ["context_length", "max_model_len", "context_window", "max_context_length"];
+    let keys = [
+        "context_length",
+        "max_model_len",
+        "context_window",
+        "max_context_length",
+    ];
     for k in keys.iter() {
         if let Some(v) = m.get(*k).and_then(Value::as_u64) {
             return Some(v);
         }
     }
-    m.pointer("/top_provider/context_length").and_then(Value::as_u64)
+    m.pointer("/top_provider/context_length")
+        .and_then(Value::as_u64)
 }
 
 /// Best-effort modality extraction. Providers report capabilities under
@@ -121,11 +142,19 @@ fn modalities_from_model(m: &Value) -> (Option<Vec<String>>, Option<Vec<String>>
     }
     let input = list_at(
         m,
-        &["/architecture/input_modalities", "/input_modalities", "/input/modality"],
+        &[
+            "/architecture/input_modalities",
+            "/input_modalities",
+            "/input/modality",
+        ],
     );
     let output = list_at(
         m,
-        &["/architecture/output_modalities", "/output_modalities", "/output/modality"],
+        &[
+            "/architecture/output_modalities",
+            "/output_modalities",
+            "/output/modality",
+        ],
     );
     if input.is_some() && output.is_some() {
         return (input, output);
@@ -144,8 +173,16 @@ fn modalities_from_model(m: &Value) -> (Option<Vec<String>>, Option<Vec<String>>
         let ins_list = parse(ins);
         let outs_list = parse(outs);
         return (
-            input.or(if ins_list.is_empty() { None } else { Some(ins_list) }),
-            output.or(if outs_list.is_empty() { None } else { Some(outs_list) }),
+            input.or(if ins_list.is_empty() {
+                None
+            } else {
+                Some(ins_list)
+            }),
+            output.or(if outs_list.is_empty() {
+                None
+            } else {
+                Some(outs_list)
+            }),
         );
     }
     (input, output)
@@ -165,14 +202,26 @@ async fn fetch_provider_models(
 
     // Explicit key wins; otherwise fall back to the stored key of an
     // existing provider (editing without retyping the secret).
-    let mut key = api_key.as_deref().map(str::trim).filter(|s| !s.is_empty()).map(String::from);
+    let mut key = api_key
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from);
     if key.is_none() {
-        if let Some(pid) = provider_id.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        if let Some(pid) = provider_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
             // A credential-store error is not "no key": sending an
             // unauthenticated request would only get a misleading 401, so
             // surface the real problem to the caller instead.
-            key = secrets::provider_key(pid)
-                .map_err(|e| format!("could not read stored API key for provider '{}': {}", pid, e))?;
+            key = secrets::provider_key(pid).map_err(|e| {
+                format!(
+                    "could not read stored API key for provider '{}': {}",
+                    pid, e
+                )
+            })?;
         }
     }
 
@@ -212,7 +261,10 @@ async fn fetch_provider_models(
             req = req.bearer_auth(k);
         }
 
-        let resp = req.send().await.map_err(|e| format!("Could not reach {}: {}", url, e))?;
+        let resp = req
+            .send()
+            .await
+            .map_err(|e| format!("Could not reach {}: {}", url, e))?;
         let status = resp.status();
         // Cap the body: this is a server-side fetch driven by UI input, so it must
         // never buffer unbounded data.
@@ -239,9 +291,13 @@ async fn fetch_provider_models(
         if !status.is_success() {
             return Err(format!("HTTP {} from {}\n{}", status.as_u16(), url, text));
         }
-        let v: Value = serde_json::from_str(&text)
-            .map_err(|e| format!("Invalid JSON from {}: {}", url, e))?;
-        let data = v.get("data").and_then(Value::as_array).cloned().unwrap_or_default();
+        let v: Value =
+            serde_json::from_str(&text).map_err(|e| format!("Invalid JSON from {}: {}", url, e))?;
+        let data = v
+            .get("data")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
         for m in &data {
             let Some(id) = m.get("id").and_then(Value::as_str) else {
                 continue;
@@ -306,7 +362,11 @@ struct ApiKeyInfo {
 fn api_key_list(state: &Arc<AppState>) -> Vec<ApiKeyInfo> {
     let cfg = state.config.read().unwrap_or_else(PoisonError::into_inner);
     let mut out = vec![ApiKeyInfo {
-        key: state.local_key.read().unwrap_or_else(PoisonError::into_inner).clone(),
+        key: state
+            .local_key
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone(),
         is_default: true,
         limit_tokens: None,
         allowed_models: None,
@@ -339,7 +399,10 @@ async fn list_api_keys(state: tauri::State<'_, Arc<AppState>>) -> Result<Vec<Api
 async fn regenerate_local_key(state: tauri::State<'_, Arc<AppState>>) -> Result<String, String> {
     let key = format!("ml-{}", uuid::Uuid::new_v4().simple());
     state.store_local_secret(&key)?;
-    *state.local_key.write().unwrap_or_else(PoisonError::into_inner) = key.clone();
+    *state
+        .local_key
+        .write()
+        .unwrap_or_else(PoisonError::into_inner) = key.clone();
     let cfg = {
         let mut g = state.config.write().unwrap_or_else(PoisonError::into_inner);
         g.api.extra_api_keys.clear();
@@ -373,7 +436,11 @@ async fn delete_api_key(
     state: tauri::State<'_, Arc<AppState>>,
     key: String,
 ) -> Result<Vec<ApiKeyInfo>, String> {
-    let default_key = state.local_key.read().unwrap_or_else(PoisonError::into_inner).clone();
+    let default_key = state
+        .local_key
+        .read()
+        .unwrap_or_else(PoisonError::into_inner)
+        .clone();
     if key == default_key {
         return Err("The default API key cannot be deleted.".into());
     }
@@ -396,7 +463,11 @@ async fn set_api_key_limit(
     key: String,
     limit_tokens: Option<u64>,
 ) -> Result<Vec<ApiKeyInfo>, String> {
-    let default_key = state.local_key.read().unwrap_or_else(PoisonError::into_inner).clone();
+    let default_key = state
+        .local_key
+        .read()
+        .unwrap_or_else(PoisonError::into_inner)
+        .clone();
     if key == default_key {
         return Err("The default API key cannot have a token limit.".into());
     }
@@ -426,12 +497,18 @@ async fn update_api_key(
     expires_at: Option<String>,
     is_admin: bool,
 ) -> Result<Vec<ApiKeyInfo>, String> {
-    let default_key = state.local_key.read().unwrap_or_else(PoisonError::into_inner).clone();
+    let default_key = state
+        .local_key
+        .read()
+        .unwrap_or_else(PoisonError::into_inner)
+        .clone();
     if key == default_key {
         return Err("The default API key cannot have scopes.".into());
     }
     if rpm_limit == Some(0) {
-        return Err("Rate limit must be at least 1 request per minute (or empty for unlimited).".into());
+        return Err(
+            "Rate limit must be at least 1 request per minute (or empty for unlimited).".into(),
+        );
     }
     if let Some(date) = &expires_at {
         if !date.is_empty() && !date.trim().chars().all(|c| c.is_ascii_digit() || c == '-') {
@@ -439,7 +516,9 @@ async fn update_api_key(
         }
     }
     let allowed = allowed_models.filter(|l: &Vec<String>| !l.is_empty());
-    let expires = expires_at.map(|d| d.trim().to_string()).filter(|d| !d.is_empty());
+    let expires = expires_at
+        .map(|d| d.trim().to_string())
+        .filter(|d| !d.is_empty());
     let cfg = {
         let mut g = state.config.write().unwrap_or_else(PoisonError::into_inner);
         match g.api.extra_api_keys.iter_mut().find(|k| k.key == key) {
@@ -458,8 +537,14 @@ async fn update_api_key(
 }
 
 #[tauri::command]
-async fn proxy_status(state: tauri::State<'_, Arc<AppState>>) -> Result<proxy::ProxyStatus, String> {
-    Ok(state.status.lock().unwrap_or_else(PoisonError::into_inner).clone())
+async fn proxy_status(
+    state: tauri::State<'_, Arc<AppState>>,
+) -> Result<proxy::ProxyStatus, String> {
+    Ok(state
+        .status
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .clone())
 }
 
 #[tauri::command]
@@ -514,7 +599,10 @@ async fn delete_provider_model(
     model_id: String,
 ) -> Result<Value, String> {
     let cfg = {
-        let mut g = state.config.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut g = state
+            .config
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let provider = match g.providers.iter_mut().find(|p| p.id == provider_id) {
             Some(p) => p,
             None => return Err("Provider not found.".into()),
@@ -540,7 +628,10 @@ async fn set_model_star(
     starred: bool,
 ) -> Result<Value, String> {
     let cfg = {
-        let mut g = state.config.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut g = state
+            .config
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let provider = match g.providers.iter_mut().find(|p| p.id == provider_id) {
             Some(p) => p,
             None => return Err("Provider not found.".into()),
@@ -607,18 +698,41 @@ async fn save_settings(
     compress: Option<settings::CompressSettings>,
     response_cache: Option<settings::ResponseCacheSettings>,
     failover_budget: Option<settings::FailoverBudgetSettings>,
+    update_url: Option<String>,
 ) -> Result<Value, String> {
     let snapshot_cfg = {
         // Mutate only the provided fields under the write lock so concurrent
         // admin changes survive (removes the stale write-back race), and take
         // the persist snapshot inside the critical section.
-        let mut g = state.config.write().unwrap_or_else(std::sync::PoisonError::into_inner);
-        if let Some(cb) = circuit_breaker { g.circuit_breaker = cb; }
-        if let Some(r) = routing { g.routing = r; }
-        if let Some(h) = health { g.health = h; }
-        if let Some(c) = compress { g.compress = c; }
-        if let Some(rc) = response_cache { g.response_cache = rc; }
-        if let Some(fb) = failover_budget { g.failover_budget = fb; }
+        let mut g = state
+            .config
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some(cb) = circuit_breaker {
+            g.circuit_breaker = cb;
+        }
+        if let Some(r) = routing {
+            g.routing = r;
+        }
+        if let Some(h) = health {
+            g.health = h;
+        }
+        if let Some(c) = compress {
+            g.compress = c;
+        }
+        if let Some(rc) = response_cache {
+            g.response_cache = rc;
+        }
+        if let Some(fb) = failover_budget {
+            g.failover_budget = fb;
+        }
+        // Empty clears the override, which makes check_for_updates fall back
+        // to the built-in manifest. Any other value wins over that default.
+        g.update_url = match update_url {
+            Some(u) if !u.trim().is_empty() => Some(u.trim().to_string()),
+            Some(_) => None,
+            None => g.update_url.clone(),
+        };
         g.clone()
     };
     crate::settings::persist(&state.settings_path, &snapshot_cfg)?;
@@ -628,10 +742,12 @@ async fn save_settings(
 }
 
 #[tauri::command]
-async fn get_health_history(
-    state: tauri::State<'_, Arc<AppState>>,
-) -> Result<Value, String> {
-    let history = state.health_history.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
+async fn get_health_history(state: tauri::State<'_, Arc<AppState>>) -> Result<Value, String> {
+    let history = state
+        .health_history
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone();
     let mut out = std::collections::HashMap::new();
     for (k, v) in history.into_iter() {
         out.insert(k, v.into_iter().collect::<Vec<_>>());
@@ -670,7 +786,10 @@ async fn set_model_prices(
         return Err("Prices cannot be negative.".into());
     }
     let snapshot_cfg = {
-        let mut g = state.config.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut g = state
+            .config
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let provider = match g.providers.iter_mut().find(|p| p.id == provider_id) {
             Some(p) => p,
             None => return Err("Provider not found.".into()),
@@ -698,7 +817,10 @@ async fn set_daily_budget(
         return Err("Budget must be a positive amount (or empty for none).".into());
     }
     let snapshot_cfg = {
-        let mut g = state.config.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut g = state
+            .config
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         g.daily_budget_usd = budget_usd;
         g.clone()
     };
@@ -709,12 +831,20 @@ async fn set_daily_budget(
 
 #[tauri::command]
 async fn export_config(state: tauri::State<'_, Arc<AppState>>) -> Result<String, String> {
-    let cfg = state.config.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
+    let cfg = state
+        .config
+        .read()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone();
     let mut value = serde_json::to_value(&cfg).map_err(|e| e.to_string())?;
     // Embed the default proxy key so exports round-trip
     // it; extra keys are already part of api.extra_api_keys in the config.
     if let Some(obj) = value.as_object_mut() {
-        let k = state.local_key.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
+        let k = state
+            .local_key
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone();
         if !k.is_empty() {
             obj.insert("localApiKey".to_string(), Value::String(k));
         }
@@ -733,12 +863,20 @@ async fn import_config(
     if let Some(k) = value.get("localApiKey").and_then(Value::as_str) {
         if !k.is_empty() {
             state.store_local_secret(k)?;
-            *state.local_key.write().unwrap_or_else(std::sync::PoisonError::into_inner) = k.to_string();
+            *state
+                .local_key
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) = k.to_string();
         }
     }
-    let mut cfg: settings::Config = serde_json::from_value(value).map_err(|e| format!("Invalid config: {}", e))?;
+    let mut cfg: settings::Config =
+        serde_json::from_value(value).map_err(|e| format!("Invalid config: {}", e))?;
     // Merge: keep existing providers that are not in the import, preserve API keys.
-    let existing = state.config.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
+    let existing = state
+        .config
+        .read()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone();
     let mut key_map = std::collections::HashMap::new();
     for p in &existing.providers {
         if let Ok(Some(k)) = state.provider_secret(&p.id) {
@@ -791,7 +929,10 @@ fn init_state(dir: PathBuf) -> Arc<AppState> {
             // Never treat a broken secret store like "first launch": rotating the
             // key silently would lock out every saved client after restart.
             // Skip rotation entirely so the stored key stays untouched.
-            eprintln!("cannot read local API key from secret store: {} (skipping key rotation)", e);
+            eprintln!(
+                "cannot read local API key from secret store: {} (skipping key rotation)",
+                e
+            );
         }
     }
     let state = Arc::new(AppState::new(cfg, settings_path, usage_path, key, usage));
@@ -815,14 +956,23 @@ fn prepare_data_dir() -> PathBuf {
                 fallback.display()
             );
             if let Err(fb_err) = std::fs::create_dir_all(&fallback) {
-                eprintln!("failed to create fallback data dir {}: {}", fallback.display(), fb_err);
+                eprintln!(
+                    "failed to create fallback data dir {}: {}",
+                    fallback.display(),
+                    fb_err
+                );
             }
             fallback
         }
     };
     for legacy in settings::legacy_data_dirs() {
         for name in settings::migrate_legacy_data(&legacy, &dir) {
-            eprintln!("migrated {} from {} into {}", name, legacy.display(), dir.display());
+            eprintln!(
+                "migrated {} from {} into {}",
+                name,
+                legacy.display(),
+                dir.display()
+            );
         }
     }
     dir
@@ -977,7 +1127,6 @@ fn main() {
             show_main_window(app);
         }))
         .setup(|app| {
-
             // User data (providers, models, usage) lives in a dedicated
             // folder that installers and updates never touch.
             let dir = prepare_data_dir();
@@ -1009,11 +1158,16 @@ fn main() {
             use tauri::menu::{Menu, MenuItem};
             use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
             let status_item = MenuItem::with_id(app, "status", status_label, false, None::<&str>)?;
-            let open_item = MenuItem::with_id(app, "open", "Multi LLM \u{f6}ffnen", true, None::<&str>)?;
+            let open_item =
+                MenuItem::with_id(app, "open", "Multi LLM \u{f6}ffnen", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Beenden", true, None::<&str>)?;
             let tray_menu = Menu::with_items(app, &[&status_item, &open_item, &quit_item])?;
             TrayIconBuilder::with_id("main-tray")
-                .icon(app.default_window_icon().expect("no default window icon").clone())
+                .icon(
+                    app.default_window_icon()
+                        .expect("no default window icon")
+                        .clone(),
+                )
                 .tooltip("Multi LLM")
                 .menu(&tray_menu)
                 .show_menu_on_left_click(false)
@@ -1041,7 +1195,11 @@ fn main() {
             let watch = state.clone();
             std::thread::spawn(move || {
                 for _ in 0..50 {
-                    let st = watch.status.lock().unwrap_or_else(PoisonError::into_inner).clone();
+                    let st = watch
+                        .status
+                        .lock()
+                        .unwrap_or_else(PoisonError::into_inner)
+                        .clone();
                     if st.running {
                         let label = match st.port {
                             Some(p) => format!("Proxy running on port {}", p),
@@ -1069,7 +1227,12 @@ fn main() {
                 }
                 let close_to_tray = window
                     .try_state::<Arc<AppState>>()
-                    .map(|s| s.config.read().unwrap_or_else(PoisonError::into_inner).close_to_tray)
+                    .map(|s| {
+                        s.config
+                            .read()
+                            .unwrap_or_else(PoisonError::into_inner)
+                            .close_to_tray
+                    })
                     .unwrap_or(true);
                 if close_to_tray {
                     api.prevent_close();

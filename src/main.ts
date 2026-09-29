@@ -16,7 +16,7 @@ interface HealthSettings { maxHistoryPerProvider: number; }
 interface CompressSettings { enabled: boolean; strength: number; }
 interface ResponseCacheSettings { enabled: boolean; ttlSecs: number; maxEntries: number; }
 interface FailoverBudgetSettings { maxAttempts: number; firstTokenTimeoutSecs: number; }
-interface PublicConfig { providers: Provider[]; api: ApiSettings; virtualModels?: VirtualEntry[]; localKey: string | null; circuitBreaker?: CircuitBreakerSettings; routing?: RoutingSettings; health?: HealthSettings; compress?: CompressSettings; responseCache?: ResponseCacheSettings; failoverBudget?: FailoverBudgetSettings; dailyBudgetUsd?: number | null; }
+interface PublicConfig { providers: Provider[]; api: ApiSettings; virtualModels?: VirtualEntry[]; localKey: string | null; circuitBreaker?: CircuitBreakerSettings; routing?: RoutingSettings; health?: HealthSettings; compress?: CompressSettings; responseCache?: ResponseCacheSettings; failoverBudget?: FailoverBudgetSettings; dailyBudgetUsd?: number | null; updateUrl?: string | null; }
 interface ProxyStatus { running: boolean; port: number | null; baseUrl: string; lanUrl: string; error?: string | null; }
 interface SaveResult { config: PublicConfig; status: ProxyStatus; }
 interface UsageEntry {
@@ -111,6 +111,7 @@ function icon(name: string): string {
     import: '<svg viewBox="0 0 12 12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.2" d="M2 5v4h8V5M6 8V3M4 6l2 2 2-2"/></svg>',
     shield: '<svg viewBox="0 0 12 12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.2" d="M6 1l4 1.6v3.6c0 2.2-1.7 4-4 4.8-2.3-.8-4-2.6-4-4.8V2.6z"/></svg>',
     lock: '<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2.5" y="5.5" width="7" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><path fill="none" stroke="currentColor" stroke-width="1.2" d="M4 5.5V4a2 2 0 0 1 4 0v1.5"/></svg>',
+    globe: '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="1.2"/><path fill="none" stroke="currentColor" stroke-width="1.2" d="M1.5 6h9M6 1.5c1.3 1.3 2 2.9 2 4.5s-.7 3.2-2 4.5c-1.3-1.3-2-2.9-2-4.5s.7-3.2 2-4.5z"/></svg>',
     doc: '<svg viewBox="0 0 12 12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.2" d="M2.5 1.5h4L9.5 4.5v6h-7z"/><path fill="none" stroke="currentColor" stroke-width="1.2" d="M6.5 1.5v3h3M4 6.5h4M4 8.5h4"/></svg>',
     starFilled: '<svg viewBox="0 0 12 12" aria-hidden="true"><path fill="#ffc85a" d="M6 1.5l1.6 3.2 3.5.5-2.5 2.5.6 3.5L6 9l-3.2 1.7.6-3.5L1 5.2l3.5-.5z"/></svg>',
     star: '<svg viewBox="0 0 12 12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.2" d="M6 1.5l1.6 3.2 3.5.5-2.5 2.5.6 3.5L6 9l-3.2 1.7.6-3.5L1 5.2l3.5-.5z"/></svg>',
@@ -1537,6 +1538,8 @@ function renderSettingsForm(): void {
   refreshAutostartToggle();
   const autoUpdateSw = document.getElementById("setting-auto-update") as HTMLInputElement | null;
   if (autoUpdateSw) { autoUpdateSw.checked = safeLocalStorageGet("auto-update") !== "0"; }
+  const updateUrlInp = document.getElementById("setting-update-url") as HTMLInputElement | null;
+  if (updateUrlInp) { updateUrlInp.value = cfg.updateUrl || ""; }
   renderTabOrderList();
 }
 
@@ -1626,6 +1629,9 @@ async function saveSettings(triggerRow?: HTMLElement | null): Promise<void> {
   const prevRouting = cfg.routing || { strategy: "weighted", latencyWindow: 20 };
   const strategyVal = (document.getElementById("setting-strategy") as HTMLSelectElement | null)?.value;
   const routing = { strategy: strategyVal || prevRouting.strategy, latencyWindow: prevRouting.latencyWindow };
+  const updateUrlInp = document.getElementById("setting-update-url") as HTMLInputElement | null;
+  // Empty means "use the built-in manifest"; the backend falls back to it.
+  const updateUrl = updateUrlInp ? updateUrlInp.value.trim() : (cfg.updateUrl || "");
   try {
     const res = await api<SaveResult>("save_settings", {
       circuitBreaker: cfg.circuitBreaker,
@@ -1634,6 +1640,7 @@ async function saveSettings(triggerRow?: HTMLElement | null): Promise<void> {
       compress: { enabled: compressEnabled, strength },
       responseCache: cfg.responseCache,
       failoverBudget: cfg.failoverBudget,
+      updateUrl: updateUrl,
     });
     cfg = res.config;
     showSavedNote(triggerRow ?? null);
@@ -2786,6 +2793,11 @@ async function init(): Promise<void> {
   wireIf<HTMLElement>("#setting-export-config", function (b) { b.addEventListener("click", exportConfig); });
   wireIf<HTMLElement>("#setting-legal-imprint", function (b) { b.addEventListener("click", function () { showLegalDialog("imprint"); }); });
   wireIf<HTMLElement>("#setting-legal-privacy", function (b) { b.addEventListener("click", function () { showLegalDialog("privacy"); }); });
+  wireIf<HTMLInputElement>("#setting-update-url", function (inp) {
+    inp.addEventListener("change", function () {
+      void saveSettings(inp.closest<HTMLElement>(".set-row"));
+    });
+  });
   wireIf<HTMLElement>("#setting-legal-terms", function (b) { b.addEventListener("click", function () { showLegalDialog("terms"); }); });
   wireIf<HTMLElement>("#setting-import-config", function (b) { b.addEventListener("click", importConfig); });
   wireIf<HTMLInputElement>("#usage-search", function (inp) { inp.addEventListener("input", scheduleRenderUsage); });

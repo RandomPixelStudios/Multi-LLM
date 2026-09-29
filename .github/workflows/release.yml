@@ -145,6 +145,38 @@ jobs:
           prerelease: false
           args: --bundles deb rpm appimage
 
+      # Das Manifest liegt in der Website, nicht in diesem Branch. Der Job
+      # schreibt es deshalb in einen Workspace-Ausgabepfad; der folgende
+      # Schritt committet nur diese eine Datei auf den Website-Branch,
+      # damit die App die neue Version auch wirklich sieht.
+      - name: Write update manifest
+        env:
+          UPDATE_SITE_DIR: ${{ github.workspace }}/website-update
+        run: node scripts/gen-update-manifest.mjs --out "$UPDATE_SITE_DIR"
+
+      - name: Publish update manifest to the Website branch
+        env:
+          UPDATE_SITE_DIR: ${{ github.workspace }}/website-update
+        run: |
+          set -eu
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add pages "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git fetch --depth 1 pages Website
+          # Nur update.json austauschen - die uebrigen Website-Dateien
+          # duerfen nicht in die Historie des Branches zurueckgeschrieben
+          # werden, sonst ueberschreibt der Job spaetere Aenderungen.
+          git worktree add ../website-tree pages/Website
+          cp "$UPDATE_SITE_DIR/update.json" ../website-tree/update.json
+          cd ../website-tree
+          if git diff --quiet -- update.json; then
+            echo "update.json ist bereits aktuell."
+          else
+            git add update.json
+            git commit -m "Update-Manifest auf v$(node -p "require('$GITHUB_WORKSPACE/package.json').version")"
+            git push pages HEAD:Website
+          fi
+
   # ------------------------------------------------------------------ macOS
   macos:
     name: macOS (.dmg, arm64 + x64)
