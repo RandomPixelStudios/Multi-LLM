@@ -1,6 +1,6 @@
 # Baut pro Branch das native Paket und hängt es an ein GitHub-Release.
 #
-#   Windows-Branch -> .msi + .exe (nsis)  + macOS .dmg (arm64 + x64)
+#   Windows-Branch -> .msi + .exe (nsis)
 #   mac-Branch     -> .dmg (arm64 + x64)
 #   Linux-Branch   -> .deb + .rpm + AppImage
 #   Website-Branch -> nur prüft (GitHub Pages baut die Seite selbst)
@@ -201,9 +201,10 @@ jobs:
   # ------------------------------------------------------------------ macOS
   macos:
     name: macOS .dmg (${{ matrix.target }})
-    # laeuft auf dem mac-Branch und (zusaetzlich) auf Windows, damit ein
-    # Push auf Windows nicht ohne DMG dasteht
-    if: github.ref_name == 'mac' || github.ref_name == 'Windows'
+    # Nur auf dem mac-Branch. Wenn der Windows-Job die DMGs mitbauen
+    # wuerde, legte er ein zweites Release an und die Pakete landeten
+    # verstreut - mac gehoert in seinen eigenen Branch.
+    if: github.ref_name == 'mac'
     runs-on: macos-latest
     strategy:
       # max-parallel: 1 ist Pflicht. tauri-action legt das Draft-Release beim
