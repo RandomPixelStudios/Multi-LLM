@@ -40,7 +40,7 @@ Grab the package for your platform from
 | Fedora/RHEL/openSUSE | `.rpm` | `sudo dnf install ./multi-llm-*.rpm` |
 | Any x86_64 | `.AppImage` | `chmod +x *.AppImage && ./multillm.AppImage` |
 | Windows | `.msi` or `.exe` | See the `Windows` branch |
-| macOS | `.dmg` | See the `Windows` branch |
+| macOS | `.dmg` | This branch, or `Windows` (both build it) |
 
 Runtime dependencies: `libwebkit2gtk-4.1` and `libayatana-appindicator3-1`
 (plus `libgtk-3`). Debian 12+, Ubuntu 22.04+, Fedora 38+.
@@ -80,7 +80,7 @@ the breaker as soon as the provider recovers.
 
 ## Configuration
 
-### Environment variables (server / Docker mode)
+### Environment variables (server mode)
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -102,13 +102,6 @@ multi-llm --serve      # multi-user: one port, isolated profiles per account
 ```
 
 ---
-
-## Docker
-
-See the `Docker` branch of this repository for the container setup. It builds
-frontend and backend from source and starts in multi-user mode: one port for
-the whole team, per-user profiles, per-user API keys, and an admin account for
-user management. No autostart — `restart: "no"` is deliberate.
 
 ---
 
@@ -146,9 +139,9 @@ cannot load TypeScript. Edit the source, run the generator, never the copy.
 ### Releases
 
 `.github/workflows/release.yml` builds per branch: `Windows` produces the MSI
-and NSIS installer plus a macOS DMG, `Linux` produces deb/rpm/AppImage and
-updates the update manifest. Every release is created as a **draft** — publish
-it deliberately.
+and NSIS installer plus a macOS DMG, `mac` produces the DMGs, `Linux` produces
+deb/rpm/AppImage and updates the update manifest. Every release is created as a
+**draft** — publish it deliberately.
 
 ---
 
