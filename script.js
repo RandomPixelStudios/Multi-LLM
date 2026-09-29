@@ -177,6 +177,9 @@
     b.classList.add("hidden");
     document.body.classList.remove("consent-open");
   }
+  function isNarrow() {
+    return window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
+  }
   (function bootConsent() {
     // Bind the footer "Cookie settings" button in every case, so a returning
     // visitor can always revise the decision.
@@ -186,6 +189,7 @@
     // page loads. We record the refusal, stop storing anything else, and say so.
     if (dec) dec.addEventListener("click", function () { writeConsent("declined"); hideConsent(); toast(T("consentDeclined")); });
     if (re) re.addEventListener("click", showConsent);
+    if (isNarrow()) { hideConsent(); return; }
     if (readConsent()) hideConsent();
     else showConsent();
   })();

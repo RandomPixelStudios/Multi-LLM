@@ -95,6 +95,10 @@ html[data-theme="light"] .grad{background:linear-gradient(92deg,#111 10%,#2b62c4
 .cap:hover{background:rgba(255,255,255,.06)}
 html[data-theme="light"] .cap:hover{background:rgba(0,0,0,.06)}
 .cap-close:hover{background:var(--danger);color:#fff}
+/* ============ TRAILER ============ */
+.video-section{max-width:1160px;margin:0 auto;padding:20px 28px 90px;text-align:center}
+.video-wrap{position:relative;width:100%;max-width:900px;margin:0 auto;aspect-ratio:16/9;background:var(--surface-2);border:1px solid var(--stroke-strong);border-radius:14px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.42)}
+.video-frame{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
 /* Shell + sidebar */
 .shell{display:flex;min-height:660px}
 #sidebar{flex:0 0 auto;width:200px;display:flex;flex-direction:column;margin:10px 0 10px 10px;border:1px solid var(--stroke);border-radius:12px;background:rgba(255,255,255,.03);padding:14px 10px;user-select:none}
@@ -431,14 +435,17 @@ html[lang="de"] .lang-en{display:none!important}
 /* Responsive */
 @media(max-width:900px){
   .hero{padding:72px 20px 44px}
-  .app-section{padding:12px 12px 70px}
+  /* On a phone the app replica is unusable: the panes become 300px slivers
+     and the whole thing needs endless scrolling. The trailer says the same
+     thing in two minutes, so the demo is hidden and only the video remains. */
+  .app-section{display:none}
+  .video-section{padding:8px 16px 70px}
+  .video-wrap{border-radius:12px}
   .shell{flex-direction:column}
   #sidebar{width:auto;margin:10px 10px 0;flex-direction:row;align-items:center;padding:10px}
   .anav{flex-direction:row;flex-wrap:wrap;gap:4px}
   .nav-item{height:32px}
   .side-foot{margin:0 0 0 auto;padding:0;border:none;flex-direction:row;align-items:center}
-  /* Keep the framed-window look: the demo scrolls inside its own pane
-     instead of stretching to 1200px of page on a phone. */
   #demo-main{padding:16px;max-height:58vh}
   .summary-row{flex-wrap:wrap}
   .stat{flex:1 1 40%}

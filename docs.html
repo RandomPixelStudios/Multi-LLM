@@ -31,7 +31,7 @@
         <a class="soc-btn" href="https://discord.gg/CZ9Mr7epqj" target="_blank" rel="noopener" title="Discord" aria-label="Discord">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3c-.2.4-.5.9-.6 1.3a18.3 18.3 0 0 0-5.5 0C9.1 3.9 8.8 3.4 8.6 3a19.7 19.7 0 0 0-4.9 1.5C.8 9.1-.3 13.6.2 18.1a19.9 19.9 0 0 0 6 3c.5-.7.9-1.4 1.3-2.1-.7-.3-1.4-.6-2-1l.5-.4a14.2 14.2 0 0 0 12.1 0l.5.4c-.7.4-1.4.7-2.1 1 .4.7.8 1.4 1.3 2.1a19.8 19.8 0 0 0 6-3c.6-5.2-.7-9.7-3.5-13.7zM8 15.3c-1.2 0-2.1-1-2.1-2.3S6.8 10.7 8 10.7s2.2 1 2.1 2.3c0 1.2-.9 2.3-2.1 2.3zm8 0c-1.2 0-2.1-1-2.1-2.3s.9-2.3 2.1-2.3 2.2 1 2.1 2.3c0 1.2-.9 2.3-2.1 2.3z"/></svg>
         </a>
-        <a class="btn accent sm donate-btn" id="donate-btn" href="https://www.paypal.com/donate/?hosted_button_id=VDWPGKZYHS6XW" target="_blank" rel="noopener" title="Donate"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12 21C7 16.5 3 13 3 8.8 3 6 5.2 4 7.8 4c1.7 0 3.2.9 4.2 2.3C13 4.9 14.5 4 16.2 4 18.8 4 21 6 21 8.8c0 4.2-4 7.7-9 12.2z"/></svg><span class="lang-en">Donate</span><span class="lang-de">Spenden</span></a>
+        <a class="btn accent sm donate-btn" id="donate-btn" href="https://ko-fi.com/randompixxelstudios" target="_blank" rel="noopener" title="Donate"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12 21C7 16.5 3 13 3 8.8 3 6 5.2 4 7.8 4c1.7 0 3.2.9 4.2 2.3C13 4.9 14.5 4 16.2 4 18.8 4 21 6 21 8.8c0 4.2-4 7.7-9 12.2z"/></svg><span class="lang-en">Donate</span><span class="lang-de">Spenden</span></a>
       </div>
     </div>
   </header>
@@ -2094,7 +2094,11 @@ docker compose down            # stoppen + Container weg (Volume bleibt!)
     // this page loads. We record the refusal and store nothing else.
     if (dec) dec.addEventListener("click", function () { writeConsent("declined"); hideConsent(); });
     if (re) re.addEventListener("click", showConsent);
-    if (readConsent()) hideConsent(); else showConsent();
+    // On phones the banner stays hidden, matching the mobile layout.
+    var isNarrow = window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
+    var decided = readConsent();
+    if (isNarrow || decided) { hideConsent(); }
+    else { showConsent(); }
     // Scrollspy for both sidebars
     var links = Array.prototype.slice.call(document.querySelectorAll(".docs-side a, .docs-toc a"));
     var map = {};
