@@ -14,7 +14,7 @@ file, served by GitHub Pages.
 | File | Purpose |
 |---|---|
 | `index.html` | Hero, download button, clickable app demo, trailer, provider marquee |
-| `docs.html` | Full documentation — installation, tutorials, API reference, Docker guide, FAQ |
+| `docs.html` | Full documentation — installation, tutorials, API reference, FAQ |
 | `legal.html` | Imprint, privacy policy, terms (English and German) |
 | `update.json` | Update manifest for the desktop app |
 | `styles.css` | Site and app-replica styles |
