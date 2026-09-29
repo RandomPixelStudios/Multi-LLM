@@ -55,6 +55,23 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          # WebView2 (winwebview) wird auf windows-latest bereits
+          # vorinstalliert; ohne dieses Feature sucht cargo nach einem
+          # Windows-SDK, das der Runner nicht hat.
+          targets: x86_64-pc-windows-msvc
+
+      - name: Verify the toolchain before building
+        shell: pwsh
+        run: |
+          Write-Host "rustc: $(rustc --version)"
+          Write-Host "cargo: $(cargo --version)"
+          # Fehlgeschlagene native Abhaengigkeiten zeigen sich als
+          # "can't find crate for `core`" bzw. Linker-Fehler; das hier
+          # faengt sie VOR dem langen Tauri-Build ab.
+          cargo fetch --manifest-path src-tauri/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Write-Host "dependencies resolved"
 
       - name: Cache Rust build
         uses: actions/cache@v4
@@ -62,8 +79,9 @@ jobs:
           path: src-tauri/target
           key: ${{ runner.os }}-cargo-release-${{ hashFiles('src-tauri/Cargo.lock') }}
 
-      # Tauri holt die WebView2- und NSIS-Abhängigkeiten selbst, braucht aber
-      # diese Windows-Komponenten vorinstalliert.
+      # Tauri holt WebView2 und NSIS selbst; der Runner bringt beides mit.
+      # Wichtig: --bundles statt targets in tauri.conf.json, damit nicht
+      # plattformfremde Formate mitgebaut werden.
       - name: Build
         uses: tauri-apps/tauri-action@v0
         env:
@@ -182,9 +200,17 @@ jobs:
 
   # ------------------------------------------------------------------ macOS
   macos:
-    name: macOS (.dmg, arm64 + x64)
+    name: macOS .dmg (${{ matrix.target }})
     if: github.ref_name == 'Windows'
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Zwei native Builds statt universal-apple-darwin: der Universal-Build
+        # braucht beide SDKs gleichzeitig und scheitert auf dem Runner
+        # haeufiger. Zwei schmalere DMGs sind fuer die Anwender derselbe
+        # Nutzen und deutlich robuster.
+        target: [aarch64-apple-darwin, x86_64-apple-darwin]
     steps:
       - uses: actions/checkout@v4
 
@@ -198,12 +224,14 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - name: Cache Rust build
         uses: actions/cache@v4
         with:
           path: src-tauri/target
-          key: ${{ runner.os }}-cargo-release-${{ hashFiles('src-tauri/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-release-${{ hashFiles('src-tauri/Cargo.lock') }}
 
       # Nicht signiert bauen: der Quellcode ist nicht von Apple signiert.
       # APPLE_SIGNING_IDENTITY="-" ist der dokumentierte Weg, das Signieren
@@ -223,10 +251,10 @@ jobs:
           tagName: v__VERSION__
           releaseName: "macOS v__VERSION__"
           releaseBody: |
-            macOS build for Multi LLM (Apple Silicon and Intel).
+            macOS build for Multi LLM. This DMG is for **${{ matrix.target }}**.
 
-            - `aarch64` = M1/M2/M3/M4
-            - `x86_64` = Intel Macs
+            - `aarch64-apple-darwin` = Apple Silicon (M1/M2/M3/M4)
+            - `x86_64-apple-darwin` = Intel Macs
 
             The DMG is **not signed** and **not notarised**, so Gatekeeper shows
             a warning on first launch — right-click the app, choose "Open", then
@@ -236,7 +264,7 @@ jobs:
             cross-platform desktop code lives.
           releaseDraft: true
           prerelease: false
-          args: --bundles dmg --target universal-apple-darwin
+          args: --bundles dmg --target ${{ matrix.target }}
 
   # ------------------------------------------- Docker + Website: nur Prüfung
   verify-only:
