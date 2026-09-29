@@ -206,6 +206,11 @@ jobs:
     if: github.ref_name == 'mac' || github.ref_name == 'Windows'
     runs-on: macos-latest
     strategy:
+      # max-parallel: 1 ist Pflicht. tauri-action legt das Draft-Release beim
+      # Start an und haengt dann die Assets an; laufen beide Architekturen
+      # gleichzeitig, findet einer das Release nicht (HTTP 404) und der Job
+      # bricht ab - auch wenn der Build selbst vollstaendig ok war.
+      max-parallel: 1
       fail-fast: false
       matrix:
         # Zwei native Builds statt universal-apple-darwin: der Universal-Build
@@ -250,7 +255,12 @@ jobs:
           # Leeres Zeichenkette-Verhalten in Tauri v2 abbilden: kein Signieren.
           APPLE_SIGNING_IDENTITY: "-"
         with:
-          tagName: v__VERSION__
+          # Eigenes Tag pro Plattform: der Windows-Job laeuft auf dem
+          # Windows-Branch ebenfalls und wuerde um dasselbe Release
+          # konkurrieren. tauri-action legt das Release an und haengt danach
+          # die Assets daran - zwei Jobs auf einem Tag ergeben HTTP 404
+          # fuer den Verlierer, auch wenn beide Builds sauber waren.
+          tagName: v__VERSION__-macos
           releaseName: "macOS v__VERSION__"
           releaseBody: |
             macOS build for Multi LLM. This DMG is for **${{ matrix.target }}**.
@@ -268,7 +278,7 @@ jobs:
           prerelease: false
           args: --bundles dmg --target ${{ matrix.target }}
 
-  # ------------------------------------------- Docker + Website: nur Prüfung
+  # ------------------------------------------------- Website: nur Prüfung
   verify-only:
     name: ${{ github.ref_name }} prüfen
     if: github.ref_name == 'Website'
