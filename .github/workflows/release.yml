@@ -1,0 +1,230 @@
+# Baut pro Branch das native Paket und hängt es an ein GitHub-Release.
+#
+#   Windows-Branch -> .msi + .exe (nsis)   auf windows-latest
+#   Linux-Branch   -> .deb + .rpm + AppImage auf ubuntu-latest
+#   Docker-Branch  -> nur prüft, published nichts (das Image baut docker/)
+#   Website-Branch -> nur prüft, published nichts (GitHub Pages baut selbst)
+#
+# Ein Release entsteht pro Branch beim Push auf `main` dieses Branches und
+# manuell über "Run workflow". Assets mit gleichem Namen werden ersetzt, damit
+# ein wiederholter Build nicht an einem vorhandenen Release scheitert.
+#
+# Schritte für dich als Owner (einmalig):
+#   Settings -> Pages: Source = Branch `Website` (betrifft nur die Website)
+#   Actions -> General -> "Allow GitHub Actions to create and approve pull requests"
+#   (für release-Asset-Uploads ist nur `contents: write` nötig, s. unten)
+
+name: Release
+
+on:
+  push:
+    branches: [Windows, Linux, Docker, Website]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------- Windows
+  windows:
+    name: Windows (.msi + .exe)
+    if: github.ref_name == 'Windows'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # WebView2 ist auf windows-latest vorinstalliert. NSIS holt die
+      # tauri-action selbst; Rust-Zusatz-Komponenten kommen unten.
+      - name: Show runner details
+        run: |
+          rustc -V || echo "rust via dtolnay/rust-toolchain"
+          node -v
+          npm -v
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/target
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('src-tauri/Cargo.lock') }}
+
+      # Tauri holt die WebView2- und NSIS-Abhängigkeiten selbst, braucht aber
+      # diese Windows-Komponenten vorinstalliert.
+      - name: Build
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: "Windows v__VERSION__"
+          releaseBody: |
+            Windows-Installer für Multi LLM.
+
+            - `.msi` – der reguläre Installer (für alle Nutzer gedacht)
+            - `.exe` – NSIS-Installer, alternativ wenn MSI nicht passt
+
+            Das Programm legt nach dem Start ein Tray-Icon ab und lauscht
+            standardmäßig auf `http://localhost:5000`.
+          releaseDraft: true
+          prerelease: false
+          # --bundles ist der native Weg; ein --config-JSON-Override
+          # scheitert leise, wenn sich die Tauri-Schema ändert.
+          args: --bundles msi nsis
+
+  # ------------------------------------------------------------------ Linux
+  linux:
+    name: Linux (.deb + .rpm + AppImage)
+    if: github.ref_name == 'Linux'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Linux prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/target
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('src-tauri/Cargo.lock') }}
+
+      - name: Build
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: "Linux v__VERSION__"
+          releaseBody: |
+            Linux-Pakete für Multi LLM.
+
+            - `.deb` – Debian/Ubuntu/Mint: `sudo apt install ./multi-llm_*_amd64.deb`
+            - `.rpm` – Fedora/RHEL/openSUSE: `sudo dnf install ./multi-llm-*.rpm`
+            - `.AppImage` – läuft ohne Installation: `chmod +x *.AppImage && ./multillm.AppImage`
+
+            Auf dem Rechner muss `libwebkit2gtk-4.1` und
+            `libayatana-appindicator3-1` vorhanden sein.
+          releaseDraft: true
+          prerelease: false
+          args: --bundles deb rpm appimage
+
+  # ------------------------------------------------------------------ macOS
+  macos:
+    name: macOS (.dmg, arm64 + x64)
+    if: github.ref_name == 'Windows'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/target
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('src-tauri/Cargo.lock') }}
+
+      # Nicht signiert bauen: der Quellcode ist nicht von Apple signiert.
+      # APPLE_SIGNING_IDENTITY="-" ist der dokumentierte Weg, das Signieren
+      # abzuschalten; die übrigen Apple-Variablen bleiben bewusst UNgesetzt,
+      # denn als leerer String wertet Tauri sie als "Zertifikat vorhanden,
+      # aber leer" und bricht ab.
+      - name: Note unsigned build
+        run: echo "Building unsigned - Gatekeeper will ask on first launch"
+
+      - name: Build
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Leeres Zeichenkette-Verhalten in Tauri v2 abbilden: kein Signieren.
+          APPLE_SIGNING_IDENTITY: "-"
+        with:
+          tagName: v__VERSION__
+          releaseName: "macOS v__VERSION__"
+          releaseBody: |
+            macOS-Paket für Multi LLM (Apple Silicon + Intel).
+
+            - `aarch64` = M1/M2/M3/M4
+            - `x86_64` = Intel-Macs
+
+            Das DMG ist **nicht** signiert und **nicht** notarisiert. Beim
+            ersten Start öffnet Gatekeeper einen Dialog – dort
+            „Trotzdem öffnen" wählen. Das ist bei nicht signierten
+            Open-Source-Programmen normal.
+          releaseDraft: true
+          prerelease: false
+          args: --bundles dmg --target universal-apple-darwin
+
+  # ------------------------------------------- Docker + Website: nur Prüfung
+  verify-only:
+    name: ${{ github.ref_name }} prüfen
+    if: github.ref_name == 'Docker' || github.ref_name == 'Website'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Rust-Kern testen
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Linux-Abhängigkeiten
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - run: cargo test --manifest-path src-tauri/Cargo.toml
+      - run: npm run check:web
+      - run: npm run presets:check
+      - run: npm run legal:check
