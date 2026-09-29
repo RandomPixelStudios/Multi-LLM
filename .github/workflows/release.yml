@@ -1,9 +1,9 @@
 # Baut pro Branch das native Paket und hängt es an ein GitHub-Release.
 #
-#   Windows-Branch -> .msi + .exe (nsis)   auf windows-latest
-#   Linux-Branch   -> .deb + .rpm + AppImage auf ubuntu-latest
-#   Docker-Branch  -> nur prüft, published nichts (das Image baut docker/)
-#   Website-Branch -> nur prüft, published nichts (GitHub Pages baut selbst)
+#   Windows-Branch -> .msi + .exe (nsis)  + macOS .dmg (arm64 + x64)
+#   mac-Branch     -> .dmg (arm64 + x64)
+#   Linux-Branch   -> .deb + .rpm + AppImage
+#   Website-Branch -> nur prüft (GitHub Pages baut die Seite selbst)
 #
 # Ein Release entsteht pro Branch beim Push auf `main` dieses Branches und
 # manuell über "Run workflow". Assets mit gleichem Namen werden ersetzt, damit
@@ -18,7 +18,7 @@ name: Release
 
 on:
   push:
-    branches: [Windows, Linux, Docker, Website]
+    branches: [Windows, mac, Linux, Website]
   workflow_dispatch:
 
 permissions:
@@ -201,7 +201,9 @@ jobs:
   # ------------------------------------------------------------------ macOS
   macos:
     name: macOS .dmg (${{ matrix.target }})
-    if: github.ref_name == 'Windows'
+    # laeuft auf dem mac-Branch und (zusaetzlich) auf Windows, damit ein
+    # Push auf Windows nicht ohne DMG dasteht
+    if: github.ref_name == 'mac' || github.ref_name == 'Windows'
     runs-on: macos-latest
     strategy:
       fail-fast: false
@@ -269,7 +271,7 @@ jobs:
   # ------------------------------------------- Docker + Website: nur Prüfung
   verify-only:
     name: ${{ github.ref_name }} prüfen
-    if: github.ref_name == 'Docker' || github.ref_name == 'Website'
+    if: github.ref_name == 'Website'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
