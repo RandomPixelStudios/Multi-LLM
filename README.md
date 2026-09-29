@@ -198,6 +198,37 @@ Legal notices, privacy policy and terms: shipped in the app under
 **Settings → About & legal**, and online at
 [randompixelstudios.github.io/Multi-LLM/legal.html](https://randompixelstudios.github.io/Multi-LLM/legal.html).
 
+
+## Responsibility and liability
+
+Multi LLM routes your requests to third-party language models. It does not
+control what those models answer and cannot know in advance what they will say.
+**You are solely responsible for how you use this software and for what happens
+as a result.**
+
+That includes:
+
+- the content you send through the proxy and the prompts you build with it,
+- the output the models return — including anything unlawful, misleading,
+  defamatory or harmful that they produce,
+- compliance with the law in your jurisdiction and with the terms of the
+  providers you enable,
+- your API keys and the charges they incur,
+- any decision you take or action you perform on the basis of model output.
+
+We are not liable for the content of any model response, for the actions or
+omissions of any provider, for costs charged by providers, or for any damage
+arising from your use of this software. **Decisions with legal, financial,
+medical or safety consequences must never be based on model output alone.**
+
+Content, documentation and downloads are provided "as is", without warranty of
+accuracy, completeness, timeliness or fitness for a purpose. Nothing limits
+liability that cannot legally be limited (intent and gross negligence, injury to
+life, body or health, or mandatory product-liability rules).
+
+Full terms: [legal.html](https://github.com/RandomPixelStudios/Multi-LLM/blob/Windows/legal.html)
+— shipped in the app under **Settings → About & legal**.
+
 ## Licence
 
 Proprietary. All rights reserved — see [LICENSE](LICENSE). Third-party
