@@ -689,17 +689,42 @@ async fn delete_virtual_model(
     snapshot(&state)
 }
 
+/// Optional settings a single save call may carry. Bundled because the
+/// individual fields pushed `save_settings` past clippy's argument limit, and
+/// every further switch would have pushed it further still.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SettingsPatch {
+    #[serde(default)]
+    circuit_breaker: Option<settings::CircuitBreakerSettings>,
+    #[serde(default)]
+    routing: Option<settings::RoutingSettings>,
+    #[serde(default)]
+    health: Option<settings::HealthSettings>,
+    #[serde(default)]
+    compress: Option<settings::CompressSettings>,
+    #[serde(default)]
+    response_cache: Option<settings::ResponseCacheSettings>,
+    #[serde(default)]
+    failover_budget: Option<settings::FailoverBudgetSettings>,
+    #[serde(default)]
+    update_url: Option<String>,
+}
+
 #[tauri::command]
 async fn save_settings(
     state: tauri::State<'_, Arc<AppState>>,
-    circuit_breaker: Option<settings::CircuitBreakerSettings>,
-    routing: Option<settings::RoutingSettings>,
-    health: Option<settings::HealthSettings>,
-    compress: Option<settings::CompressSettings>,
-    response_cache: Option<settings::ResponseCacheSettings>,
-    failover_budget: Option<settings::FailoverBudgetSettings>,
-    update_url: Option<String>,
+    patch: SettingsPatch,
 ) -> Result<Value, String> {
+    let SettingsPatch {
+        circuit_breaker,
+        routing,
+        health,
+        compress,
+        response_cache,
+        failover_budget,
+        update_url,
+    } = patch;
     let snapshot_cfg = {
         // Mutate only the provided fields under the write lock so concurrent
         // admin changes survive (removes the stale write-back race), and take

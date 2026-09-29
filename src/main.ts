@@ -1633,14 +1633,18 @@ async function saveSettings(triggerRow?: HTMLElement | null): Promise<void> {
   // Empty means "use the built-in manifest"; the backend falls back to it.
   const updateUrl = updateUrlInp ? updateUrlInp.value.trim() : (cfg.updateUrl || "");
   try {
+    // The command takes a single `patch` object; Tauri maps its camelCase
+    // keys onto the snake_case struct fields.
     const res = await api<SaveResult>("save_settings", {
-      circuitBreaker: cfg.circuitBreaker,
-      routing: routing,
-      health: cfg.health,
-      compress: { enabled: compressEnabled, strength },
-      responseCache: cfg.responseCache,
-      failoverBudget: cfg.failoverBudget,
-      updateUrl: updateUrl,
+      patch: {
+        circuitBreaker: cfg.circuitBreaker,
+        routing: routing,
+        health: cfg.health,
+        compress: { enabled: compressEnabled, strength },
+        responseCache: cfg.responseCache,
+        failoverBudget: cfg.failoverBudget,
+        updateUrl: updateUrl,
+      },
     });
     cfg = res.config;
     showSavedNote(triggerRow ?? null);
