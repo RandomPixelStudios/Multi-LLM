@@ -32,7 +32,8 @@
   };
   var STR = {
     en: { title: "Multi LLM – All LLM Providers. One API.", desc: "Multi LLM – all LLM providers behind one OpenAI-compatible local API. Try the faithful app demo right here.",
-      copyFail: "Copy failed",
+      copyFail: "Copy failed", prefsSaved: "Preferences saved",
+      consentSaved: "Consent saved", consentDeclined: "No non-essential storage. Server logs are created by GitHub before this page loads.",
       provDeleted: "Provider deleted", needAppProv: "You need the app to add providers – install the app to use this.",
       installProv: "Install the app to configure providers.", vmDeleted: "Virtual model deleted", nameReq: "Name is required",
       pickMember: "Pick at least one member", vmCreated: "Virtual model created", copied: "Copied to clipboard",
@@ -46,7 +47,8 @@
       noMatch1: "No models match \"", noMatch2: "\"",
       exposeA: "Other devices can reach the API at: http://<your-pc-ip>:", exposeB: "/v1 (Windows Firewall may ask for permission once.)" },
     de: { title: "Multi LLM – Alle LLM-Provider. Eine API.", desc: "Multi LLM – alle LLM-Provider hinter einer OpenAI-kompatiblen lokalen API. Teste hier die originalgetreue App-Demo.",
-      copyFail: "Kopieren fehlgeschlagen",
+      copyFail: "Kopieren fehlgeschlagen", prefsSaved: "Einstellungen gespeichert",
+      consentSaved: "Zustimmung gespeichert", consentDeclined: "Keine nicht notwendige Speicherung. Server-Logs erstellt GitHub schon vor dem Laden dieser Seite.",
       provDeleted: "Provider gelöscht", needAppProv: "Du brauchst die App, um Provider hinzuzufügen – installiere die App.",
       installProv: "Installiere die App, um Provider zu konfigurieren.", vmDeleted: "Virtuelles Modell gelöscht", nameReq: "Name ist erforderlich",
       pickMember: "Wähle mindestens ein Mitglied", vmCreated: "Virtuelles Modell erstellt", copied: "In Zwischenablage kopiert",
@@ -151,6 +153,43 @@
     if (saved) setMode(saved.theme || "dark", false);
     else setMode("dark", false);
   })();
+
+  /* ================= Consent for server logs (GitHub Pages) =================
+     A bottom banner, not a modal: the page stays usable and dark while the
+     visitor decides. Nothing non-essential is loaded before a decision.
+     The choice is stored in the same ml-prefs record as the theme. */
+  var CONSENT_KEY = "ml-consent";
+  function readConsent() {
+    try { return localStorage.getItem(CONSENT_KEY); } catch (e) { return null; }
+  }
+  function writeConsent(v) {
+    try { localStorage.setItem(CONSENT_KEY, v); } catch (e) {}
+  }
+  function showConsent() {
+    var b = $("#consent-banner");
+    if (!b) return;
+    b.classList.remove("hidden");
+    document.body.classList.add("consent-open");
+  }
+  function hideConsent() {
+    var b = $("#consent-banner");
+    if (!b) return;
+    b.classList.add("hidden");
+    document.body.classList.remove("consent-open");
+  }
+  (function bootConsent() {
+    // Bind the footer "Cookie settings" button in every case, so a returning
+    // visitor can always revise the decision.
+    var acc = $("#consent-accept"), dec = $("#consent-decline"), re = $("#consent-open");
+    if (acc) acc.addEventListener("click", function () { writeConsent("accepted"); hideConsent(); toast(T("consentSaved")); });
+    // Declining cannot stop the server logs - GitHub records them before any
+    // page loads. We record the refusal, stop storing anything else, and say so.
+    if (dec) dec.addEventListener("click", function () { writeConsent("declined"); hideConsent(); toast(T("consentDeclined")); });
+    if (re) re.addEventListener("click", showConsent);
+    if (readConsent()) hideConsent();
+    else showConsent();
+  })();
+
 
   /* ================= Demo state ================= */
   var LOGOS = { "OpenAI": "openai.png", "Anthropic": "anthropic.png", "DeepSeek": "deepseek.png", "Ollama (Local)": "ollama.png", "Kilo Gateway": "kilo.ico", "OpenCode Zen": "opencode.png", "Groq": "groq.png", "Gemini": "gemini.png", "OpenRouter": "openrouter.png", "Mistral AI": "mistral.png" };
