@@ -36,11 +36,14 @@ Grab the package for your platform from
 
 | Platform | File | Install |
 |---|---|---|
-| Windows | `.msi` or `.exe` | Run the installer |
-| Linux | `.deb` | `sudo apt install ./multi-llm_*_amd64.deb` |
-| Linux | `.rpm` | `sudo dnf install ./multi-llm-*.rpm` |
-| Linux | `.AppImage` | `chmod +x *.AppImage && ./multillm.AppImage` |
-| macOS | `.dmg` | Drag to Applications. Unsigned — first launch: right-click → Open |
+| Debian/Ubuntu/Mint | `.deb` | `sudo apt install ./multi-llm_*_amd64.deb` |
+| Fedora/RHEL/openSUSE | `.rpm` | `sudo dnf install ./multi-llm-*.rpm` |
+| Any x86_64 | `.AppImage` | `chmod +x *.AppImage && ./multillm.AppImage` |
+| Windows | `.msi` or `.exe` | See the `Windows` branch |
+| macOS | `.dmg` | See the `Windows` branch |
+
+Runtime dependencies: `libwebkit2gtk-4.1` and `libayatana-appindicator3-1`
+(plus `libgtk-3`). Debian 12+, Ubuntu 22.04+, Fedora 38+.
 
 First launch registers a user (that account becomes the admin), then you add
 providers and keys under **Providers**.
