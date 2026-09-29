@@ -33,7 +33,7 @@
   var STR = {
     en: { title: "Multi LLM – All LLM Providers. One API.", desc: "Multi LLM – all LLM providers behind one OpenAI-compatible local API. Try the faithful app demo right here.",
       copyFail: "Copy failed", prefsSaved: "Preferences saved",
-      consentSaved: "Consent saved", consentDeclined: "No non-essential storage. Server logs are created by GitHub before this page loads.",
+      consentSaved: "Understood - nothing is stored on this device.", consentDeclined: "Nothing is stored on this device. GitHub writes the server logs before this page loads.",
       provDeleted: "Provider deleted", needAppProv: "You need the app to add providers – install the app to use this.",
       installProv: "Install the app to configure providers.", vmDeleted: "Virtual model deleted", nameReq: "Name is required",
       pickMember: "Pick at least one member", vmCreated: "Virtual model created", copied: "Copied to clipboard",
@@ -48,7 +48,7 @@
       exposeA: "Other devices can reach the API at: http://<your-pc-ip>:", exposeB: "/v1 (Windows Firewall may ask for permission once.)" },
     de: { title: "Multi LLM – Alle LLM-Provider. Eine API.", desc: "Multi LLM – alle LLM-Provider hinter einer OpenAI-kompatiblen lokalen API. Teste hier die originalgetreue App-Demo.",
       copyFail: "Kopieren fehlgeschlagen", prefsSaved: "Einstellungen gespeichert",
-      consentSaved: "Zustimmung gespeichert", consentDeclined: "Keine nicht notwendige Speicherung. Server-Logs erstellt GitHub schon vor dem Laden dieser Seite.",
+      consentSaved: "Verstanden - auf diesem Gerät wird nichts gespeichert.", consentDeclined: "Auf diesem Gerät wird nichts gespeichert. GitHub schreibt die Server-Logs schon vor dem Laden dieser Seite.",
       provDeleted: "Provider gelöscht", needAppProv: "Du brauchst die App, um Provider hinzuzufügen – installiere die App.",
       installProv: "Installiere die App, um Provider zu konfigurieren.", vmDeleted: "Virtuelles Modell gelöscht", nameReq: "Name ist erforderlich",
       pickMember: "Wähle mindestens ein Mitglied", vmCreated: "Virtuelles Modell erstellt", copied: "In Zwischenablage kopiert",
@@ -156,15 +156,9 @@
 
   /* ================= Consent for server logs (GitHub Pages) =================
      A bottom banner, not a modal: the page stays usable and dark while the
-     visitor decides. Nothing non-essential is loaded before a decision.
-     The choice is stored in the same ml-prefs record as the theme. */
-  var CONSENT_KEY = "ml-consent";
-  function readConsent() {
-    try { return localStorage.getItem(CONSENT_KEY); } catch (e) { return null; }
-  }
-  function writeConsent(v) {
-    try { localStorage.setItem(CONSENT_KEY, v); } catch (e) {}
-  }
+     visitor decides. It shows on every visit and stores nothing - the server
+     logs exist whether we remember a choice or not, so a stored "accepted"
+     would overstate what actually happened. */
   function showConsent() {
     var b = $("#consent-banner");
     if (!b) return;
@@ -177,21 +171,17 @@
     b.classList.add("hidden");
     document.body.classList.remove("consent-open");
   }
-  function isNarrow() {
-    return window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
-  }
   (function bootConsent() {
-    // Bind the footer "Cookie settings" button in every case, so a returning
-    // visitor can always revise the decision.
-    var acc = $("#consent-accept"), dec = $("#consent-decline"), re = $("#consent-open");
-    if (acc) acc.addEventListener("click", function () { writeConsent("accepted"); hideConsent(); toast(T("consentSaved")); });
+    // The banner shows on every visit, on every screen size. Nothing is
+    // written to storage: there is no "already decided" state to remember,
+    // so there is nothing to withdraw either. The footer button is dropped -
+    // with no stored decision there is nothing left to reopen.
+    var acc = $("#consent-accept"), dec = $("#consent-decline");
+    if (acc) acc.addEventListener("click", function () { hideConsent(); toast(T("consentSaved")); });
     // Declining cannot stop the server logs - GitHub records them before any
-    // page loads. We record the refusal, stop storing anything else, and say so.
-    if (dec) dec.addEventListener("click", function () { writeConsent("declined"); hideConsent(); toast(T("consentDeclined")); });
-    if (re) re.addEventListener("click", showConsent);
-    if (isNarrow()) { hideConsent(); return; }
-    if (readConsent()) hideConsent();
-    else showConsent();
+    // page loads. We say so instead of pretending the choice changes anything.
+    if (dec) dec.addEventListener("click", function () { hideConsent(); toast(T("consentDeclined")); });
+    showConsent();
   })();
 
 

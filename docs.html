@@ -1955,7 +1955,6 @@ docker compose down            # stoppen + Container weg (Volume bleibt!)
         <a href="legal.html#imprint"><span class="lang-en">Imprint</span><span class="lang-de">Impressum</span></a>
         <a href="legal.html#privacy"><span class="lang-en">Privacy</span><span class="lang-de">Datenschutz</span></a>
         <a href="legal.html#terms"><span class="lang-en">Terms</span><span class="lang-de">Bedingungen</span></a>
-        <button class="foot-prefs" id="consent-open"><span class="lang-en">Cookie settings</span><span class="lang-de">Cookie-Einstellungen</span></button>
       </nav>
     </div>
   </footer>
@@ -2068,10 +2067,9 @@ docker compose down            # stoppen + Container weg (Volume bleibt!)
       setMode(light ? "dark" : "light", true);
     });
     // Consent for server logs (GitHub Pages). Bottom banner, not a modal:
-    // the page stays dark and usable while the visitor decides.
-    var CONSENT_KEY = "ml-consent";
-    function readConsent() { try { return localStorage.getItem(CONSENT_KEY); } catch (e) { return null; } }
-    function writeConsent(v) { try { localStorage.setItem(CONSENT_KEY, v); } catch (e) {} }
+    // the page stays dark and usable while the visitor decides. It shows on
+    // every visit and stores nothing - the logs exist whether we remember a
+    // choice or not, so a stored "accepted" would overstate what happened.
     function showConsent() {
       var b = document.getElementById("consent-banner");
       if (!b) return;
@@ -2084,21 +2082,13 @@ docker compose down            # stoppen + Container weg (Volume bleibt!)
       b.classList.add("hidden");
       document.body.classList.remove("consent-open");
     }
-    // Bind the footer "Cookie settings" button in every case, so a returning
-    // visitor can always revise the decision.
     var acc = document.getElementById("consent-accept");
     var dec = document.getElementById("consent-decline");
-    var re  = document.getElementById("consent-open");
-    if (acc) acc.addEventListener("click", function () { writeConsent("accepted"); hideConsent(); });
+    if (acc) acc.addEventListener("click", function () { hideConsent(); });
     // Declining cannot stop the server logs: GitHub records them before
-    // this page loads. We record the refusal and store nothing else.
-    if (dec) dec.addEventListener("click", function () { writeConsent("declined"); hideConsent(); });
-    if (re) re.addEventListener("click", showConsent);
-    // On phones the banner stays hidden, matching the mobile layout.
-    var isNarrow = window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
-    var decided = readConsent();
-    if (isNarrow || decided) { hideConsent(); }
-    else { showConsent(); }
+    // this page loads. We say so rather than implying the choice changed it.
+    if (dec) dec.addEventListener("click", function () { hideConsent(); });
+    showConsent();
     // Scrollspy for both sidebars
     var links = Array.prototype.slice.call(document.querySelectorAll(".docs-side a, .docs-toc a"));
     var map = {};
