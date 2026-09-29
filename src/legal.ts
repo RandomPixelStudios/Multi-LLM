@@ -152,16 +152,35 @@ export const APP_LEGAL: LegalDoc = {
         "(including anything unlawful, misleading, defamatory or harmful they produce), compliance " +
         "with the law in your jurisdiction and with the terms of the providers you enable, your " +
         "API keys and the charges they incur, and any decision you take on the basis of model " +
-        "output. We are not liable for the content of any model response, for the actions or " +
-        "omissions of any provider, for provider charges, or for damage arising from your use of " +
-        "this software. Decisions with legal, financial, medical or safety consequences must never " +
+        "output. Decisions with legal, financial, medical or safety consequences must never " +
         "be based on model output alone.\n" +
         "\n" +
-        "5. Your keys, your responsibility.\n" +
+        "5. Compatibility and environment damage.\n" +
+        "The author is not liable for damage caused by software or hardware that does not work " +
+        "with this one, by defects in the environment it runs in, or by faults that would not have " +
+        "occurred with a different configuration. This includes in particular: operating system " +
+        "updates that change a WebView or a runtime library; missing or modified system libraries; " +
+        "graphics and audio drivers; network stacks, VPNs and proxies; antivirus software and " +
+        "firewalls blocking the local port; a missing or unstable system tray; ports already in " +
+        "use by other programs; and container or virtualised environments that restrict local " +
+        "ports or file paths.\n" +
+        "\n" +
+        "The author is likewise not liable for lost data, lost API keys, lost usage history or " +
+        "lost configuration; for interrupted, duplicated or corrupted requests; for responses " +
+        "that arrive incomplete or out of order; for costs a provider charges for requests that " +
+        "failed; or for damage arising from continued use despite an error message. Test this " +
+        "software before you depend on it, keep backups of your configuration, and check the " +
+        "required system libraries before reporting a problem.\n" +
+        "\n" +
+        "Neither is the author liable for the content of any model response, for the actions or " +
+        "omissions of any provider, for provider charges, or for any damage arising from your use " +
+        "of this software.\n" +
+        "\n" +
+        "6. Your keys, your responsibility.\n" +
         "API keys you enter stay on your machine. You are responsible for keeping them secret and for " +
         "the charges they incur. If a key leaks, revoke it with the provider.\n" +
         "\n" +
-        "6. Licence.\n" +
+        "7. Licence.\n" +
         "Multi LLM is proprietary software. All rights reserved: no permission is granted to use, " +
         "copy, modify, publish, distribute, sublicense or sell it without the written consent of " +
         "the copyright holder. The full text ships with every download and is available at " +
@@ -169,7 +188,7 @@ export const APP_LEGAL: LegalDoc = {
         "those are listed in the lock files. The licence covers the software, not this legal " +
         "text.\n" +
         "\n" +
-        "7. Changes and law.\n" +
+        "8. Changes and law.\n" +
         "Content may change without notice. Governed by the laws of the Federal Republic of Germany; " +
         "if any provision is unenforceable, the rest remains in force."
     }

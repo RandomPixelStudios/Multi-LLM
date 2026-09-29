@@ -216,6 +216,29 @@ That includes:
 - your API keys and the charges they incur,
 - any decision you take or action you perform on the basis of model output.
 
+### Compatibility and environment damage
+
+The author is not liable for damage caused by software or hardware that does not
+work with this one, by defects in the environment it runs in, or by faults that
+would not have occurred with a different configuration. That includes:
+
+- operating system updates that change a WebView or a runtime library,
+- missing or modified system libraries,
+- graphics and audio drivers, network stacks, VPNs and proxies,
+- antivirus software or firewalls blocking the local port,
+- a missing or unstable system tray,
+- ports already in use by other programs,
+- container or virtualised environments that restrict local ports or paths.
+
+The author is likewise not liable for lost data, lost API keys, lost usage
+history or lost configuration; for interrupted, duplicated or corrupted
+requests; for responses that arrive incomplete or out of order; for costs a
+provider charges for requests that failed; or for damage arising from continued
+use despite an error message.
+
+Test this software before you depend on it, keep backups of your configuration,
+and check the required system libraries before reporting a problem.
+
 We are not liable for the content of any model response, for the actions or
 omissions of any provider, for costs charged by providers, or for any damage
 arising from your use of this software. **Decisions with legal, financial,
