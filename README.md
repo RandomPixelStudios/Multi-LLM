@@ -116,6 +116,27 @@ cookie is set before the visitor presses play.
 
 ---
 
+
+## Responsibility and liability
+
+Multi LLM routes your requests to third-party language models. It does not
+control what those models answer and cannot know in advance what they will say.
+**You are solely responsible for how you use this software and for what happens
+as a result.**
+
+That includes the content you send through the proxy, the output the models
+return (including anything unlawful, misleading, defamatory or harmful that they
+produce), compliance with the law in your jurisdiction and with the terms of the
+providers you enable, your API keys and the charges they incur, and any decision
+you take on the basis of model output.
+
+We are not liable for the content of any model response, for the actions or
+omissions of any provider, for provider charges, or for any damage arising from
+your use of this software. **Decisions with legal, financial, medical or safety
+consequences must never be based on model output alone.**
+
+The full wording is in [legal.html](legal.html#terms), section 4.
+
 ## Legal
 
 Imprint, privacy policy and terms live in `legal.html` and are reachable from
