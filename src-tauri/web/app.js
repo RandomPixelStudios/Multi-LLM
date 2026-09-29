@@ -128,7 +128,7 @@
   }
 
   /* ---------- Tabs ---------- */
-  const TABS = ["models", "providers", "virtual", "api", "usage", "settings", "users"];
+  const TABS = ["models", "providers", "virtual", "api", "usage", "settings", "legal", "users"];
   function showTab(which) {
     // Benutzer-Tab ist Admins vorbehalten (wird sonst gar nicht angezeigt).
     if (which === "users" && !(S.user && S.user.is_admin)) { which = "models"; }
@@ -138,7 +138,8 @@
     });
     const fn = {
       models: window.UI_models, providers: window.UI_providers, virtual: window.UI_virtual,
-      api: window.UI_api, usage: window.UI_usage, settings: window.UI_settings, users: window.UI_users
+      api: window.UI_api, usage: window.UI_usage, settings: window.UI_settings,
+      legal: window.UI_legal, users: window.UI_users
     }[which];
     if (fn) { fn(); }
   }

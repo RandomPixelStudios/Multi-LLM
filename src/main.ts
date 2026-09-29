@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import PROVIDER_PRESETS_JSON from "./provider-presets.json";
+import { APP_LEGAL } from "./legal";
 import "./ui.css";
 
 /* ================= Types ================= */
@@ -108,6 +109,9 @@ function icon(name: string): string {
     download: '<svg viewBox="0 0 12 12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.2" d="M6 2v7M3 8l3 3 3-3M1 11h10"/></svg>',
     export: '<svg viewBox="0 0 12 12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.2" d="M2 7v4h8V7M6 2v5M4 6l2-2 2 2"/></svg>',
     import: '<svg viewBox="0 0 12 12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.2" d="M2 5v4h8V5M6 8V3M4 6l2 2 2-2"/></svg>',
+    shield: '<svg viewBox="0 0 12 12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.2" d="M6 1l4 1.6v3.6c0 2.2-1.7 4-4 4.8-2.3-.8-4-2.6-4-4.8V2.6z"/></svg>',
+    lock: '<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2.5" y="5.5" width="7" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><path fill="none" stroke="currentColor" stroke-width="1.2" d="M4 5.5V4a2 2 0 0 1 4 0v1.5"/></svg>',
+    doc: '<svg viewBox="0 0 12 12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.2" d="M2.5 1.5h4L9.5 4.5v6h-7z"/><path fill="none" stroke="currentColor" stroke-width="1.2" d="M6.5 1.5v3h3M4 6.5h4M4 8.5h4"/></svg>',
     starFilled: '<svg viewBox="0 0 12 12" aria-hidden="true"><path fill="#ffc85a" d="M6 1.5l1.6 3.2 3.5.5-2.5 2.5.6 3.5L6 9l-3.2 1.7.6-3.5L1 5.2l3.5-.5z"/></svg>',
     star: '<svg viewBox="0 0 12 12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.2" d="M6 1.5l1.6 3.2 3.5.5-2.5 2.5.6 3.5L6 9l-3.2 1.7.6-3.5L1 5.2l3.5-.5z"/></svg>',
     search: '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="5" cy="5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.2"/><path fill="none" stroke="currentColor" stroke-width="1.2" d="M7.5 7.5l2.5 2.5"/></svg>',
@@ -1656,6 +1660,39 @@ async function exportUsage(): Promise<void> {
   } catch { /* shown */ }
 }
 
+/* ---- Legal texts: imprint, privacy, terms (shared with the website) ---- */
+
+function showLegalDialog(sectionId: string): void {
+  closeDialog();
+  const section = APP_LEGAL.sections.find(function (s) { return s.id === sectionId; });
+  if (!section) { return; }
+  const root = $("#dialog-root");
+  const tabs = APP_LEGAL.sections.map(function (s) {
+    return '<button class="btn sm' + (s.id === sectionId ? " accent" : "") + '" data-legal-tab="' + esc(s.id) + '">' + esc(s.title) + "</button>";
+  }).join("");
+  const overlay = el(
+    '<div class="overlay">' +
+      '<div class="dialog wide" role="dialog" aria-modal="true">' +
+        '<div class="dialog-body">' +
+          '<div class="dialog-title">' + esc(section.title) + '</div>' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">' + tabs + '</div>' +
+          '<div class="legal-text">' + esc(section.body) + '</div>' +
+        '</div>' +
+        '<div class="dialog-footer">' +
+          '<a class="btn" id="legal-web" href="https://randompixelstudios.github.io/Multi-LLM/legal.html" target="_blank" rel="noopener">Open online</a>' +
+          '<button class="btn accent dlg-close">Close</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>'
+  );
+  root.appendChild(overlay);
+  (overlay.querySelector(".dlg-close") as HTMLElement).addEventListener("click", closeDialog);
+  wireOverlayClose(overlay);
+  overlay.querySelectorAll<HTMLElement>("[data-legal-tab]").forEach(function (btn) {
+    btn.addEventListener("click", function () { showLegalDialog(btn.dataset.legalTab || "imprint"); });
+  });
+}
+
 async function exportConfig(): Promise<void> {
   let json: string;
   try {
@@ -2747,6 +2784,9 @@ async function init(): Promise<void> {
   wireIf<HTMLElement>("#models-empty-goto", function (b) { b.addEventListener("click", function () { showPanel("providers"); }); });
   wireIf<HTMLElement>("#setting-export-usage", function (b) { b.addEventListener("click", exportUsage); });
   wireIf<HTMLElement>("#setting-export-config", function (b) { b.addEventListener("click", exportConfig); });
+  wireIf<HTMLElement>("#setting-legal-imprint", function (b) { b.addEventListener("click", function () { showLegalDialog("imprint"); }); });
+  wireIf<HTMLElement>("#setting-legal-privacy", function (b) { b.addEventListener("click", function () { showLegalDialog("privacy"); }); });
+  wireIf<HTMLElement>("#setting-legal-terms", function (b) { b.addEventListener("click", function () { showLegalDialog("terms"); }); });
   wireIf<HTMLElement>("#setting-import-config", function (b) { b.addEventListener("click", importConfig); });
   wireIf<HTMLInputElement>("#usage-search", function (inp) { inp.addEventListener("input", scheduleRenderUsage); });
   const modelSearch = document.getElementById("model-search") as HTMLInputElement | null;

@@ -380,6 +380,7 @@ input.switch:checked:hover::before { transform: none; background: #1f1f1f; }
 .dialog.wide { width: 680px; }
 @keyframes pop { from { opacity: 0; transform: scale(0.97); } }
 .dialog-body { padding: 22px 24px 12px; overflow-y: auto; }
+.legal-text { font-size: 13.5px; line-height: 1.65; color: var(--text-2); white-space: pre-wrap; max-height: 46vh; overflow-y: auto; padding-right: 6px; }
 .dialog-title { font-family: var(--font-display); font-size: 20px; font-weight: 600; margin-bottom: 14px; }
 .dialog-footer {
   display: flex; justify-content: flex-end; gap: 8px;

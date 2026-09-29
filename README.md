@@ -27,6 +27,8 @@ oder als Multi-User-Server (ein Port für viele Konten) nutzbar.
 ```
 src/                    Desktop-Frontend (TypeScript/Vite, Tauri-IPC)
 src/provider-presets.json  Gemeinsame Quelle für die Provider-Presets
+src/legal.ts             Rechtstexte (Impressum, Datenschutz, Bedingungen),
+                          eine Quelle für App und Website
 src-tauri/src/          Rust-Backend
   proxy.rs              Kern: Routing, Übersetzer, Usage, Sessions, Handler
   server.rs             Multi-User-Registry + Server-Router
@@ -35,7 +37,7 @@ src-tauri/src/          Rust-Backend
 src-tauri/web/          Eingebettetes Web-Frontend (wird via include_str! gebettet)
 scripts/                Hilfs-Skripte (presets-Generator, Windows-Setup)
 docker/                 Dockerfile + docker-compose.yml
-Website V1/, Trailer/   Archivierte Website-/Trailer-Materialien (nicht Teil des Builds)
+Website V1/, Trailer/   Website-Materialien (separat gepusht, siehe dort)
 ```
 
 ## Schnellstart
@@ -110,6 +112,8 @@ npm run build          # tsc --noEmit + vite build
 npm run check:web      # Syntax-Check aller eingebetteten Web-Skripte
 npm run presets        # src-tauri/web/presets.js aus src/provider-presets.json erzeugen
 npm run presets:check  # nur prüfen, ob presets.js aktuell ist (Exit 1 bei Drift)
+npm run legal          # src-tauri/web/legal.js aus src/legal.ts erzeugen
+npm run legal:check    # nur prüfen, ob legal.js aktuell ist (Exit 1 bei Drift)
 
 cd src-tauri
 cargo test             # Backend-Tests
@@ -122,11 +126,18 @@ das Desktop-Frontend importiert sie direkt, `scripts/gen-presets.mjs` schreibt
 die Kopie für das eingebettete Web-Frontend. Nie eine der beiden Dateien von
 Hand bearbeiten.
 
+Dasselbe gilt für die Rechtstexte: `src/legal.ts` ist die einzige Quelle.
+Die Desktop-App importiert das TypeScript-Modul direkt, das eingebettete
+Web-Frontend kann kein TypeScript und bekommt die Kopie aus
+`scripts/gen-legal.mjs`. Impressum, Datenschutz und Bedingungen stehen damit
+in App, Web-UI und Website identisch. Bearbeite immer `src/legal.ts` und lasse
+danach `npm run legal` laufen.
+
 ## Tests & CI
 
 - `cargo test` – Backend (Routing, Übersetzer, Sessions, Persistenz, Konten).
 - `npm run build` – Typ-Check + Bundle des Desktop-Frontends.
-- `npm run check:web` / `npm run presets:check` – eingebettetes Web-Frontend.
+- `npm run check:web` / `npm run presets:check` / `npm run legal:check` – eingebettetes Web-Frontend.
 - `.github/workflows/ci.yml` führt das alles bei jedem Push aus.
 
 ## Lizenz

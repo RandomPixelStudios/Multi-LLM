@@ -9,6 +9,8 @@
     "check:web": "for f in src-tauri/web/*.js; do node --check \"$f\" || exit 1; done && echo web-js-ok",
     "presets": "node scripts/gen-presets.mjs",
     "presets:check": "node scripts/gen-presets.mjs --check",
+    "legal": "node scripts/gen-legal.mjs",
+    "legal:check": "node scripts/gen-legal.mjs --check",
     "preview": "vite preview",
     "dev:tauri": "tauri dev",
     "build:tauri": "tauri build",
