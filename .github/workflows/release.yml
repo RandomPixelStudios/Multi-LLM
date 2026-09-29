@@ -88,19 +88,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__
-          releaseName: "Windows v__VERSION__"
+          releaseName: "Multi LLM __VERSION__"
           releaseBody: |
             Windows installers for Multi LLM.
 
             - `.msi` — the regular installer, suitable for most setups
             - `.exe` — NSIS installer, use it if the MSI does not fit your setup
 
-            The app lives in the system tray once started and listens on
-            `http://localhost:5000` by default.
-
-            macOS note: the DMG in this release is unsigned, so Gatekeeper asks
-            once on first launch — choose "Open" there. That is normal for
-            unsigned open-source builds.
+            Linux packages (`.deb`, `.rpm`, `.AppImage`) and the macOS `.dmg`
+            files are attached to this same release by the other branch jobs.
           releaseDraft: true
           prerelease: false
           # --bundles ist der native Weg; ein --config-JSON-Override
@@ -153,7 +149,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__
-          releaseName: "Linux v__VERSION__"
+          releaseName: "Multi LLM __VERSION__"
           releaseBody: |
             Linux packages for Multi LLM.
 
@@ -256,13 +252,11 @@ jobs:
           # Leeres Zeichenkette-Verhalten in Tauri v2 abbilden: kein Signieren.
           APPLE_SIGNING_IDENTITY: "-"
         with:
-          # Eigenes Tag pro Plattform: der Windows-Job laeuft auf dem
-          # Windows-Branch ebenfalls und wuerde um dasselbe Release
-          # konkurrieren. tauri-action legt das Release an und haengt danach
-          # die Assets daran - zwei Jobs auf einem Tag ergeben HTTP 404
-          # fuer den Verlierer, auch wenn beide Builds sauber waren.
-          tagName: v__VERSION__-macos
-          releaseName: "macOS v__VERSION__"
+          # Gleiches Tag wie Windows und Linux: tauri-action haengt die
+          # Assets an das bestehende Release an. max-parallel: 1 oben
+          # verhindert, dass beide Architekturen gleichzeitig darauf zugreifen.
+          tagName: v__VERSION__
+          releaseName: "Multi LLM __VERSION__"
           releaseBody: |
             macOS build for Multi LLM. This DMG is for **${{ matrix.target }}**.
 
