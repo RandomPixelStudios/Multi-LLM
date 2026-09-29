@@ -149,9 +149,12 @@ export const APP_LEGAL: LegalDoc = {
         "the charges they incur. If a key leaks, revoke it with the provider.\n" +
         "\n" +
         "5. Licence.\n" +
-        "Multi LLM is open source under the MIT licence. The licence text ships with every download " +
-        "and is available at github.com/RandomPixelStudios/Multi-LLM. The licence covers the " +
-        "software, not this legal text.\n" +
+        "Multi LLM is proprietary software. All rights reserved: no permission is granted to use, " +
+        "copy, modify, publish, distribute, sublicense or sell it without the written consent of " +
+        "the copyright holder. The full text ships with every download and is available at " +
+        "github.com/RandomPixelStudios/Multi-LLM. Third-party packages keep their own licences; " +
+        "those are listed in the lock files. The licence covers the software, not this legal " +
+        "text.\n" +
         "\n" +
         "6. Changes and law.\n" +
         "Content may change without notice. Governed by the laws of the Federal Republic of Germany; " +

@@ -1,145 +1,208 @@
-# MultiLLM
+# Multi LLM
 
-Ein lokaler LLM-Proxy mit Weboberfläche: MultiLLM nimmt OpenAI-kompatible
-Anfragen entgegen, verteilt sie über mehrere Provider/Modelle (Routing,
-Circuit-Breaker, Health-Checks) und übersetzt zwischen den API-Formaten
-(OpenAI, Anthropic, OpenAI *Responses*). Als Tauri-Desktop-App, headless
-oder als Multi-User-Server (ein Port für viele Konten) nutzbar.
+**All LLM providers. One API key.**
 
-## Funktionen
+Multi LLM is a local proxy that sits between your tools and every LLM provider
+you have keys for. It speaks OpenAI on the outside, speaks whatever each
+provider speaks on the inside, and keeps your keys on your own machine.
 
-- **Ein Endpunkt, viele Provider** – `/v1/responses` und `/v1/*` sprechen
-  OpenAI-Format, unabhängig davon, ob oben drin OpenAI, Anthropic, Gemini,
-  Ollama/LM Studio/vLLM (lokal) oder ~90 weitere Anbieter liegen.
-- **Routing mit Ausfallschutz** – gewichtete/zufällige/latenzbasierte
-  Strategie, Circuit-Breaker, periodische Health-Checks, Sticky-Sessions,
-  Failover-Budget pro Anfrage.
-- **Kontext-Compression & Response-Cache** – lange Prompts werden eingedampft,
-  identische Antworten cached (TTL-Regeln konfigurierbar).
-- **Usage-Tracking** – pro Modell/Tag, inkl. Export.
-- **Multi-User-Server** – ein Prozess, ein Port; jedes Konto hat eigenes
-  Profil, eigene Provider/Models/Keys und eigene Usage-Daten.
-- **Zwei Oberflächen** – Tauri-Desktop-App (`src/`) und eingebettetes
-  Web-Frontend (`src-tauri/web/`, läuft auch ohne Desktop-Hülle).
+Point Cursor, VS Code, Continue, OpenCode or any OpenAI-compatible client at
+`http://localhost:5000/v1` and every model you configured becomes available
+through a single URL and a single key.
 
-## Projektstruktur
+> **Beta.** Expect breaking changes. See [Status](#status) below.
+
+---
+
+## What it actually does
+
+| | |
+|---|---|
+| **One endpoint** | `/v1/chat/completions` and `/v1/responses` talk to 91 cloud and local providers |
+| **Format translation** | OpenAI ↔ Anthropic ↔ OpenAI *Responses* — your client never sees the difference |
+| **Smart routing** | Weighted, round-robin, priority, latency, fastest or sticky — switchable per virtual model |
+| **Automatic failover** | Circuit breakers park failing providers, health checks bring them back |
+| **Virtual models** | Group models into a bundle; the proxy picks per request using your strategy |
+| **Cost control** | Token-compress prompts (1–10) and per-model token ranking with USD estimates |
+| **Private by design** | Keys live in a local file, never leave the machine, no telemetry, no account |
+| **Response cache** | Identical answers served from cache with configurable TTL |
+
+---
+
+## Install
+
+Grab the package for your platform from
+[GitHub Releases](https://github.com/RandomPixelStudios/Multi-LLM/releases).
+
+| Platform | File | Install |
+|---|---|---|
+| Windows | `.msi` or `.exe` | Run the installer |
+| Linux | `.deb` | `sudo apt install ./multi-llm_*_amd64.deb` |
+| Linux | `.rpm` | `sudo dnf install ./multi-llm-*.rpm` |
+| Linux | `.AppImage` | `chmod +x *.AppImage && ./multillm.AppImage` |
+| macOS | `.dmg` | Drag to Applications. Unsigned — first launch: right-click → Open |
+
+First launch registers a user (that account becomes the admin), then you add
+providers and keys under **Providers**.
+
+### Connect a client
 
 ```
-src/                    Desktop-Frontend (TypeScript/Vite, Tauri-IPC)
-src/provider-presets.json  Gemeinsame Quelle für die Provider-Presets
-src/legal.ts             Rechtstexte (Impressum, Datenschutz, Bedingungen),
-                          eine Quelle für App und Website
-src-tauri/src/          Rust-Backend
-  proxy.rs              Kern: Routing, Übersetzer, Usage, Sessions, Handler
-  server.rs             Multi-User-Registry + Server-Router
-  users.rs              Konten, argon2id-Passwörter, Ports
-  settings.rs           Config-Schema, Persistenz, Secrets
-src-tauri/web/          Eingebettetes Web-Frontend (wird via include_str! gebettet)
-scripts/                Hilfs-Skripte (presets-Generator, Windows-Setup)
-docker/                 Dockerfile + docker-compose.yml
-Website V1/, Trailer/   Website-Materialien (separat gepusht, siehe dort)
+Base URL:  http://localhost:5000/v1
+API key:   shown under API → API Keys
 ```
 
-## Schnellstart
+In most clients this is two fields. No plugin, no lock-in — if a tool speaks
+OpenAI, it works.
 
-### Desktop-App
+---
+
+## How routing works
+
+You do not have to choose a model per request. Define a **virtual model** —
+a named bundle of real models — and let the proxy pick:
+
+- **weighted** – random, but starred models get 4× the weight
+- **round_robin** – even rotation
+- **priority** – first healthy model in provider order
+- **latency** – lowest measured average
+- **fastest** – latency weighted by current health
+- **sticky** – keep sending a conversation to the model that started it
+
+When a provider fails, the circuit breaker opens after 3 consecutive errors
+and routing skips it for 60 seconds. Health probes run continuously and close
+the breaker as soon as the provider recovers.
+
+---
+
+## Configuration
+
+### Environment variables (server / Docker mode)
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MULTI_LLM_PORT` | `5000` | Port of the embedded HTTP server |
+| `MULTI_LLM_EXPOSE` | `0` | `1` binds to `0.0.0.0` instead of localhost only |
+| `MULTI_LLM_SERVER` | `0` | `1` enables single-port multi-user mode |
+| `MULTI_LLM_DATA_DIR` | platform default | Where settings, secrets and usage live |
+| `MULTI_LLM_ALLOW_SIGNUP` | off in server mode | `1` permits registration without an admin session |
+| `MULTI_LLM_COOKIE_SECURE` | `0` | `1` sets `Secure` on the session cookie |
+| `MULTI_LLM_PUBLIC_DASHBOARD` | `0` | `1` serves the read-only dashboard without a key |
+| `MULTI_LLM_USER_PORT_BASE` | `8123` | First personal port per account |
+| `MULTI_LLM_DAILY_BUDGET_USD` | unset | Warns in Usage at 80 % of the limit |
+
+### Running without the UI
+
+```bash
+multi-llm --headless   # single user, no window
+multi-llm --serve      # multi-user: one port, isolated profiles per account
+```
+
+---
+
+## Docker
+
+See the `Docker` branch of this repository for the container setup. It builds
+frontend and backend from source and starts in multi-user mode: one port for
+the whole team, per-user profiles, per-user API keys, and an admin account for
+user management. No autostart — `restart: "no"` is deliberate.
+
+---
+
+## Building from source
+
+Requires Node 20+, Rust (stable) and the [Tauri prerequisites](https://tauri.app/start/prerequisites/)
+(`libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev` on Debian/Ubuntu).
 
 ```bash
 npm install
-npm run dev:tauri       # Entwicklungsmodus
-npm run build:tauri     # Produktions-Build
+npm run dev              # frontend dev server
+npm run build:tauri      # production bundle for this platform
 ```
 
-### Multi-User-Server (ein Port, viele Konten)
+### Checks
 
 ```bash
-npm run build                       # Frontend bauen (dist/)
-cd src-tauri && cargo build --release
-./target/release/multi-llm --serve  # Multi-User-Modus
-./target/release/multi-llm --headless  # Einzelnutzer ohne Fenster
-```
-
-Beim ersten Start ist die Registrierung offen, bis das erste Konto existiert
-(Bootstrap). Danach ist Sign-up zu – siehe Tabelle unten.
-
-### Docker
-
-```bash
-cd docker
-docker compose up --build -d
-docker compose ps          # "healthy", sobald der Port gebunden ist
-# -> http://localhost:5000  (Login Pflicht)
-```
-
-Alle Benutzerdaten liegen im Volume `multillm-data` (`/data`), Prozesse laufen
-als Nicht-Root-User `appuser`.
-
-## Konfiguration (Umgebungsvariablen)
-
-| Variable | Standard | Bedeutung |
-| --- | --- | --- |
-| `MULTI_LLM_PORT` | `5000` | Port des eingebetteten HTTP-Servers |
-| `MULTI_LLM_EXPOSE` | `0` | `1` = auch außerhalb von localhost lauschen (LAN/Docker) |
-| `MULTI_LLM_SERVER` | `0` | `1` = Single-Port-Multi-User-Modus |
-| `MULTI_LLM_DATA_DIR` | plattformabhängig | Ordner für Settings/Secrets/Usage/Konten |
-| `MULTI_LLM_ALLOW_SIGNUP` | (Server: zu) | `1` erlaubt Registrierung ohne Admin-Session |
-| `MULTI_LLM_COOKIE_SECURE` | `0` | `1` setzt `Secure` am Session-Cookie (HTTPS) |
-| `MULTI_LLM_PUBLIC_DASHBOARD` | `0` | `1` erlaubt öffentlichen *read-only* Dashboard-Zugriff |
-| `MULTI_LLM_USER_PORT_BASE` | `8123` | Erster persönlicher Port pro Konto |
-
-## Sicherheit
-
-- **Passwörter**: argon2id (PHC-String, 128-Bit-Salt pro Hash). Konten aus
-  älteren Releases (`v1$…` iteriertes SHA-256) bleiben lesbar und werden beim
-  nächsten Login automatisch migriert. Mindestlänge: 10 Zeichen.
-- **Sessions**: In-Memory-Token mit Idle-TTL (12 h), Hard-Max-Age (7 Tagen),
-  Größen-Cap mit LRU-Eviction und periodischem Aufräumen. `HttpOnly` +
-  `SameSite=Lax`, `Secure` auf Wunsch (`MULTI_LLM_COOKIE_SECURE` bzw.
-  `x-forwarded-proto: https`).
-- **Sign-up-Gate (Server-Modus)**: Standardmäßig nur, solange es kein Konto
-  gibt, mit Admin-Session oder mit `MULTI_LLM_ALLOW_SIGNUP=1`.
-- **Zugriffskontrolle**: Benutzerverwaltung nur über die Admin-Session;
-  API-Key-Vergleiche laufen konstantzeitig (`ct_eq`).
-- **Throttling**: Fehlversuche bei Login/Sign-up/Löschen sind pro IP gedrosselt
-  (10 Versuche/Minute, dann 60 s Sperre).
-- **Body-Limits**: 8 MB für Verwaltungs-Routen, 64 MB nur für `/v1`.
-
-## Entwicklung
-
-```bash
-npm run dev            # Vite-Devserver für das Desktop-Frontend
-npm run build          # tsc --noEmit + vite build
-npm run check:web      # Syntax-Check aller eingebetteten Web-Skripte
-npm run presets        # src-tauri/web/presets.js aus src/provider-presets.json erzeugen
-npm run presets:check  # nur prüfen, ob presets.js aktuell ist (Exit 1 bei Drift)
-npm run legal          # src-tauri/web/legal.js aus src/legal.ts erzeugen
-npm run legal:check    # nur prüfen, ob legal.js aktuell ist (Exit 1 bei Drift)
+npm run build            # tsc --noEmit + vite build
+npm run check:web        # syntax check of the embedded web frontend
+npm run presets:check    # src-tauri/web/presets.js in sync with the source
+npm run legal:check      # src-tauri/web/legal.js in sync with src/legal.ts
+npm run update-manifest:check
 
 cd src-tauri
-cargo test             # Backend-Tests
-cargo clippy --all-targets
+cargo test               # backend: routing, translation, sessions, accounts
+cargo clippy --all-targets -- -D warnings
 cargo fmt --all
 ```
 
-Die Provider-Presets haben **eine** Quelle (`src/provider-presets.json`);
-das Desktop-Frontend importiert sie direkt, `scripts/gen-presets.mjs` schreibt
-die Kopie für das eingebettete Web-Frontend. Nie eine der beiden Dateien von
-Hand bearbeiten.
+The provider presets and the legal texts each have exactly one source. The
+desktop app imports them directly; `scripts/gen-presets.mjs` and
+`scripts/gen-legal.mjs` write the copies for the embedded web frontend, which
+cannot load TypeScript. Edit the source, run the generator, never the copy.
 
-Dasselbe gilt für die Rechtstexte: `src/legal.ts` ist die einzige Quelle.
-Die Desktop-App importiert das TypeScript-Modul direkt, das eingebettete
-Web-Frontend kann kein TypeScript und bekommt die Kopie aus
-`scripts/gen-legal.mjs`. Impressum, Datenschutz und Bedingungen stehen damit
-in App, Web-UI und Website identisch. Bearbeite immer `src/legal.ts` und lasse
-danach `npm run legal` laufen.
+### Releases
 
-## Tests & CI
+`.github/workflows/release.yml` builds per branch: `Windows` produces the MSI
+and NSIS installer plus a macOS DMG, `Linux` produces deb/rpm/AppImage and
+updates the update manifest. Every release is created as a **draft** — publish
+it deliberately.
 
-- `cargo test` – Backend (Routing, Übersetzer, Sessions, Persistenz, Konten).
-- `npm run build` – Typ-Check + Bundle des Desktop-Frontends.
-- `npm run check:web` / `npm run presets:check` / `npm run legal:check` – eingebettetes Web-Frontend.
-- `.github/workflows/ci.yml` führt das alles bei jedem Push aus.
+---
 
-## Lizenz
+## Updates
 
-MIT – siehe [LICENSE](LICENSE).
+The app checks a small JSON manifest at start-up (Settings → App → *Check for
+updates automatically*, switchable). The manifest lives on the project
+website; a self-hosted fork can point the field **Update server** at its own
+URL. Nothing about your machine, providers or usage is ever sent — only your
+IP address reaches GitHub, which serves the file.
+
+---
+
+## Security
+
+- **Passwords** — argon2id, per-hash 128-bit salt. Legacy `v1$…` hashes (iterated
+  SHA-256) still verify and migrate on next login. Minimum 10 characters.
+- **Sessions** — in-memory tokens, 12 h idle TTL, 7 d hard max, size-capped with
+  LRU eviction. `HttpOnly` + `SameSite=Lax`, `Secure` on request.
+- **Key comparison** — constant-time (`ct_eq`) everywhere.
+- **Throttling** — 10 failed login/signup attempts per minute per IP, then a
+  60-second block.
+- **Body limits** — 8 MB for management routes, 64 MB for `/v1`.
+- **API keys** — stored locally, compared as hashes, never written to exports
+  unless you explicitly include them.
+
+---
+
+## Project layout
+
+```
+src/                    Desktop frontend (TypeScript / Vite, Tauri IPC)
+  provider-presets.json   Single source for the 91 providers
+  legal.ts                Single source for the legal texts
+src-tauri/src/          Rust backend
+  proxy/                  Routing, format translation, usage, sessions
+  server.rs               Multi-user registry and router
+  users.rs                Accounts, argon2id passwords, ports
+  settings.rs             Config schema, persistence, secrets
+  update_check.rs         Update manifest fetch
+src-tauri/web/          Embedded web frontend (embedded via include_str!)
+scripts/                Generators and setup helpers
+```
+
+---
+
+## Status
+
+Beta. The API shape may change. Provider behaviour — availability, pricing,
+rate limits — is outside our control. You pay your providers directly; Multi
+LLM never bills you.
+
+Legal notices, privacy policy and terms: shipped in the app under
+**Settings → About & legal**, and online at
+[randompixelstudios.github.io/Multi-LLM/legal.html](https://randompixelstudios.github.io/Multi-LLM/legal.html).
+
+## Licence
+
+Proprietary. All rights reserved — see [LICENSE](LICENSE). Third-party
+packages keep their own licences; see the lock files.

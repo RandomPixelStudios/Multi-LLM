@@ -13,9 +13,11 @@
  *
  * Die Website liegt absichtlich NICHT im Repo (sie wird als eigener Branch
  * gepusht). Deshalb wird das Ziel ueber --out oder MLM_WEBSITE_DIR bestimmt
- * und faellt auf ~/Schreibtisch/Website zurueck.
+ * und faellt auf ~/Schreibtisch/Website zurueck. Das Verzeichnis wird
+ * angelegt, falls es fehlt - der CI-Schritt schreibt in einen frischen
+ * Workspace-Ordner, den es dort noch gar nicht gibt.
  */
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -63,6 +65,9 @@ if (args.includes("--check")) {
   }
   console.log("update.json is current");
 } else {
+  // writeFileSync legt keine Verzeichnisse an; der CI-Schritt schreibt in
+  // einen Workspace-Ordner, den es dort noch gar nicht gibt.
+  mkdirSync(dir, { recursive: true });
   writeFileSync(target, out);
   console.log(`wrote ${target} (version ${version})`);
 }

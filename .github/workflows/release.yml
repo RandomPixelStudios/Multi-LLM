@@ -72,13 +72,17 @@ jobs:
           tagName: v__VERSION__
           releaseName: "Windows v__VERSION__"
           releaseBody: |
-            Windows-Installer für Multi LLM.
+            Windows installers for Multi LLM.
 
-            - `.msi` – der reguläre Installer (für alle Nutzer gedacht)
-            - `.exe` – NSIS-Installer, alternativ wenn MSI nicht passt
+            - `.msi` — the regular installer, suitable for most setups
+            - `.exe` — NSIS installer, use it if the MSI does not fit your setup
 
-            Das Programm legt nach dem Start ein Tray-Icon ab und lauscht
-            standardmäßig auf `http://localhost:5000`.
+            The app lives in the system tray once started and listens on
+            `http://localhost:5000` by default.
+
+            macOS note: the DMG in this release is unsigned, so Gatekeeper asks
+            once on first launch — choose "Open" there. That is normal for
+            unsigned open-source builds.
           releaseDraft: true
           prerelease: false
           # --bundles ist der native Weg; ein --config-JSON-Override
@@ -133,14 +137,13 @@ jobs:
           tagName: v__VERSION__
           releaseName: "Linux v__VERSION__"
           releaseBody: |
-            Linux-Pakete für Multi LLM.
+            Linux packages for Multi LLM.
 
-            - `.deb` – Debian/Ubuntu/Mint: `sudo apt install ./multi-llm_*_amd64.deb`
-            - `.rpm` – Fedora/RHEL/openSUSE: `sudo dnf install ./multi-llm-*.rpm`
-            - `.AppImage` – läuft ohne Installation: `chmod +x *.AppImage && ./multillm.AppImage`
+            - `.deb` — Debian/Ubuntu/Mint: `sudo apt install ./multi-llm_*_amd64.deb`
+            - `.rpm` — Fedora/RHEL/openSUSE: `sudo dnf install ./multi-llm-*.rpm`
+            - `.AppImage` — runs without installing: `chmod +x *.AppImage && ./multillm.AppImage`
 
-            Auf dem Rechner muss `libwebkit2gtk-4.1` und
-            `libayatana-appindicator3-1` vorhanden sein.
+            Requires `libwebkit2gtk-4.1` and `libayatana-appindicator3-1`.
           releaseDraft: true
           prerelease: false
           args: --bundles deb rpm appimage
@@ -220,15 +223,17 @@ jobs:
           tagName: v__VERSION__
           releaseName: "macOS v__VERSION__"
           releaseBody: |
-            macOS-Paket für Multi LLM (Apple Silicon + Intel).
+            macOS build for Multi LLM (Apple Silicon and Intel).
 
             - `aarch64` = M1/M2/M3/M4
-            - `x86_64` = Intel-Macs
+            - `x86_64` = Intel Macs
 
-            Das DMG ist **nicht** signiert und **nicht** notarisiert. Beim
-            ersten Start öffnet Gatekeeper einen Dialog – dort
-            „Trotzdem öffnen" wählen. Das ist bei nicht signierten
-            Open-Source-Programmen normal.
+            The DMG is **not signed** and **not notarised**, so Gatekeeper shows
+            a warning on first launch — right-click the app, choose "Open", then
+            confirm. This is expected for unsigned builds and happens once.
+
+            macOS is built from the `Windows` branch because that is where the
+            cross-platform desktop code lives.
           releaseDraft: true
           prerelease: false
           args: --bundles dmg --target universal-apple-darwin

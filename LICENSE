@@ -1,16 +1,10 @@
-MIT License
+Multi LLM
+Copyright (c) 2026 John Weide. All rights reserved.
 
-Copyright (c) 2026 MultiLLM Contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+This software is proprietary. No permission is granted to use, copy, modify,
+merge, publish, distribute, sublicense, or sell copies of this software or
+of any substantial portion of it, in any medium, without the prior written
+permission of the copyright holder.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -19,3 +13,12 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+Third-party components
+----------------------
+
+This project depends on third-party Rust and JavaScript packages that remain
+under their own licenses. Those licenses apply to those packages only; see the
+lock files in src-tauri/ and the repository root for the exact versions used.
+Provider names, logos and trademarks shown in the interface belong to their
+respective owners and are used for identification only.
