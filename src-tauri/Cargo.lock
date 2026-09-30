@@ -2300,7 +2300,7 @@ dependencies = [
 
 [[package]]
 name = "multi-llm"
-version = "1.0.5"
+version = "1.0.6"
 dependencies = [
  "argon2",
  "axum",

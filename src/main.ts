@@ -2324,8 +2324,9 @@ function stopPolling(): void {
 }
 
 /* ================= Multi-user auth (local accounts) =================
- * - Erster Start (keine Benutzer): Onboarding-Wizard (Benutzername +
- *   Passwort, danach OAuth-Schritt mit "Ohne Anmeldung fortfahren").
+   * - Erster Start (keine Benutzer): Onboarding-Wizard mit Benutzername
+   *   und Passwort. Es gab einmal einen zweiten Schritt mit Google-/
+   *   Microsoft-/Email-"Login"; der hat nichts verifiziert und ist weg.
  * - Danach: Login-Screen mit Benutzerliste. Die Session lebt nur im
  *   Speicher - App schließen meldet automatisch ab.
  * - Jedes Konto besitzt eigene Provider/Models/API-Keys plus einen eigenen
@@ -2437,14 +2438,15 @@ async function afterAuth(u: UserPublic, fresh: boolean): Promise<void> {
 
 /* ---- Onboarding wizard ---- */
 
-interface WizardState { username: string; password: string; oauth: string | null; email: string; }
+interface WizardState { username: string; password: string; }
 
 function showWizardStep1(prefill?: WizardState, backToLogin?: boolean): void {
-  const w: WizardState = prefill || { username: "", password: "", oauth: null, email: "" };
+  const w: WizardState = prefill || { username: "", password: "" };
   const ov = authShell(
     "Welcome to Multi LLM",
     "Create a user. Every user gets their own providers, models and API keys.",
-    '<div class="auth-steps"><i class="now"></i><i></i></div>',
+    "",
+    '<div class="auth-port-note"><span>🔑</span><span>Every new user automatically gets their own port, so multiple users can use the app at the same time.</span></div>' +
     '<div class="field"><label for="w-username">Username</label>' +
       '<input id="w-username" type="text" autocomplete="username" spellcheck="false" placeholder="e.g. anna" /></div>' +
       '<div class="field"><label for="w-password">Password (min. 10 chars)</label>' +
@@ -2454,114 +2456,37 @@ function showWizardStep1(prefill?: WizardState, backToLogin?: boolean): void {
       '<div class="err-text" id="w-err"></div>' +
       '<div class="auth-actions">' +
       (backToLogin ? '<button class="btn" id="w-back">Back</button>' : '<span class="flex-spacer"></span>') +
-      '<button class="btn accent" id="w-next"><span>Next</span></button></div>'
+      '<button class="btn accent" id="w-finish"><span>Create account</span></button></div>'
   );
   const nameEl = ov.querySelector("#w-username") as HTMLInputElement;
   const pwEl = ov.querySelector("#w-password") as HTMLInputElement;
   const pw2El = ov.querySelector("#w-password2") as HTMLInputElement;
   const errEl = ov.querySelector("#w-err") as HTMLElement;
+  const btn = ov.querySelector("#w-finish") as HTMLButtonElement;
   nameEl.value = w.username;
   if (backToLogin) {
     (ov.querySelector("#w-back") as HTMLElement).addEventListener("click", function () { void showLogin(); });
   }
-  function next(): void {
+  async function finish(): Promise<void> {
+    if (authBusy) { return; }
     const name = nameEl.value.trim();
     if (name.length < 2) { errEl.textContent = "Username needs at least 2 characters."; nameEl.focus(); return; }
     if (!/^[A-Za-z0-9_-]+$/.test(name)) { errEl.textContent = "Nur Buchstaben, Ziffern, '_' und '-' sind erlaubt."; nameEl.focus(); return; }
     if (pwEl.value.length < 10) { errEl.textContent = "Password needs at least 10 characters."; pwEl.focus(); return; }
     if (pwEl.value !== pw2El.value) { errEl.textContent = "Passwords do not match."; pw2El.focus(); return; }
     errEl.textContent = "";
-    w.username = name;
-    w.password = pwEl.value;
-    showWizardStep2(w);
-  }
-  (ov.querySelector("#w-next") as HTMLElement).addEventListener("click", next);
-  for (const inp of [nameEl, pwEl, pw2El]) {
-    inp.addEventListener("keydown", function (ev) { if (ev.key === "Enter") { next(); } });
-  }
-  window.setTimeout(function () { nameEl.focus(); }, 40);
-}
-
-function showWizardStep2(w: WizardState): void {
-  const ov = authShell(
-    "Link account",
-    "Link \"" + w.username + "\" with Google, Microsoft or email. Verification comes later - for testing you can continue without login.",
-    '<div class="auth-steps"><i class="done"></i><i class="now"></i></div>',
-    '<div class="oauth-stack">' +
-      '<button class="oauth-btn" id="oa-google"><span class="ob-mark g">G</span><span>Log in with Google</span><span class="ob-check hidden">✓</span></button>' +
-      '<button class="oauth-btn" id="oa-ms"><span class="ob-mark m"><i></i><i></i><i></i><i></i></span><span>Log in with Microsoft</span><span class="ob-check hidden">✓</span></button>' +
-      '<button class="oauth-btn" id="oa-email"><span class="ob-mark e">✉</span><span>Log in with email</span><span class="ob-check hidden">✓</span></button>' +
-      '</div>' +
-      '<div class="field hidden" id="oa-email-wrap" style="margin-top:10px;"><label for="oa-email-input">Email address</label>' +
-      '<input id="oa-email-input" type="email" autocomplete="email" spellcheck="false" placeholder="name@beispiel.de" /></div>' +
-      '<div class="auth-port-note"><span>🔑</span><span>Every new user automatically gets their own port, so multiple users can use the app at the same time.</span></div>' +
-      '<div class="err-text" id="w-err"></div>' +
-      '<div class="auth-actions">' +
-      '<button class="btn" id="w-back">Back</button>' +
-      '<span class="flex-spacer"></span>' +
-      '<button class="btn accent" id="w-finish"><span>Create account</span></button></div>' +
-      '<button class="auth-skip" id="w-skip">Continue without login</button>'
-  );
-  const errEl = ov.querySelector("#w-err") as HTMLElement;
-  const emailWrap = ov.querySelector("#oa-email-wrap") as HTMLElement;
-  const emailEl = ov.querySelector("#oa-email-input") as HTMLInputElement;
-  emailEl.value = w.email;
-
-  function markLinked(which: string | null): void {
-    const map: Record<string, string> = { google: "#oa-google", microsoft: "#oa-ms", email: "#oa-email" };
-    for (const key of Object.keys(map)) {
-      const btn = ov.querySelector(map[key]) as HTMLElement;
-      const check = btn.querySelector(".ob-check") as HTMLElement;
-      const on = which === key;
-      btn.classList.toggle("linked", on);
-      check.classList.toggle("hidden", !on);
-    }
-  }
-  (ov.querySelector("#oa-google") as HTMLElement).addEventListener("click", function () {
-    w.oauth = "google";
-    emailWrap.classList.add("hidden");
-    markLinked("google");
-    toast("Google link saved - verification comes later (test mode)");
-  });
-  (ov.querySelector("#oa-ms") as HTMLElement).addEventListener("click", function () {
-    w.oauth = "microsoft";
-    emailWrap.classList.add("hidden");
-    markLinked("microsoft");
-    toast("Microsoft link saved - verification comes later (test mode)");
-  });
-  (ov.querySelector("#oa-email") as HTMLElement).addEventListener("click", function () {
-    w.oauth = "email";
-    emailWrap.classList.remove("hidden");
-    markLinked("email");
-    window.setTimeout(function () { emailEl.focus(); }, 30);
-  });
-  (ov.querySelector("#w-back") as HTMLElement).addEventListener("click", function () {
-    w.email = emailEl.value.trim();
-    showWizardStep1(w, true);
-  });
-
-  async function finish(oauth: string | null): Promise<void> {
-    const btn = ov.querySelector("#w-finish") as HTMLButtonElement;
-    if (authBusy) { return; }
-    if (oauth === "email") {
-      w.email = emailEl.value.trim();
-      if (!w.email || w.email.indexOf("@") < 0) {
-        errEl.textContent = "Please enter a valid email - or continue without login.";
-        emailEl.focus();
-        return;
-      }
-    }
-    errEl.textContent = "";
     authBusy = true;
     btn.disabled = true;
     try {
+      // Keine OAuth-Verknuepfung: das Konto ist lokal, ein Google- oder
+      // Microsoft-Login wuerde hier nichts verifizieren.
       await api<UserPublic>("create_user", {
-        username: w.username,
-        password: w.password,
-        oauthProvider: oauth,
-        email: oauth === "email" ? w.email : null
+        username: name,
+        password: pwEl.value,
+        oauthProvider: null,
+        email: null
       });
-      const u = await api<UserPublic>("login_user", { username: w.username, password: w.password });
+      const u = await api<UserPublic>("login_user", { username: name, password: pwEl.value });
       await afterAuth(u, true);
     } catch {
       btn.disabled = false; /* Fehler-Toast kommt aus api() */
@@ -2569,8 +2494,11 @@ function showWizardStep2(w: WizardState): void {
       authBusy = false;
     }
   }
-  (ov.querySelector("#w-finish") as HTMLElement).addEventListener("click", function () { void finish(w.oauth); });
-  (ov.querySelector("#w-skip") as HTMLElement).addEventListener("click", function () { void finish(null); });
+  btn.addEventListener("click", function () { void finish(); });
+  for (const inp of [nameEl, pwEl, pw2El]) {
+    inp.addEventListener("keydown", function (ev) { if (ev.key === "Enter") { void finish(); } });
+  }
+  window.setTimeout(function () { nameEl.focus(); }, 40);
 }
 
 /* ---- Login screen (also the user manager) ---- */

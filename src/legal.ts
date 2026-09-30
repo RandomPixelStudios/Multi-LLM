@@ -21,8 +21,6 @@ export interface LegalDoc {
   sections: LegalSection[];
 }
 
-export const APP_VERSION_LABEL = "Multi LLM 1.0.5";
-
 /* Shown in the app and in the Docker/server build. */
 export const APP_LEGAL: LegalDoc = {
   headline: "Legal",
