@@ -254,5 +254,8 @@ Full terms: [legal.html](https://github.com/RandomPixelStudios/Multi-LLM/blob/Wi
 
 ## Licence
 
-Proprietary. All rights reserved — see [LICENSE](LICENSE). Third-party
-packages keep their own licences; see the lock files.
+Proprietary. You may install and use Multi LLM freely, including in
+commercial settings. You may not resell it, redistribute it, publish the
+source code, or use the name and logo for your own product — see
+[LICENSE](LICENSE) for the full terms. Third-party packages keep their own
+licences; see the lock files.
