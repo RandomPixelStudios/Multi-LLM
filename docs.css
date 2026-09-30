@@ -360,6 +360,15 @@
 .doc-pager .dp-title { display: block; font-size: 15px; font-weight: 650; color: var(--text); margin-top: 3px; }
 .doc-pager .dp-next { text-align: right; }
 
+/* ============ Consent banner spacing ============
+ * The banner is position:fixed at the bottom. The 132px body padding in
+ * styles.css is enough on a wide screen but not on a phone, where the
+ * article is tall and the banner sits over the text currently in view.
+ * Extra padding at the end of the content keeps the last section
+ * reachable. */
+.docs-page.consent-open .docs-shell { padding-bottom: 210px; }
+@media (max-width: 820px) { .docs-page.consent-open .docs-shell { padding-bottom: 250px; } }
+
 /* ============ Responsive ============ */
 
 @media (max-width: 1080px) {
