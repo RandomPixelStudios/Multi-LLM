@@ -201,14 +201,21 @@
    * pages, so it cannot drift from the content it describes. */
   var searchIndex = null;
   var searchLoading = false;
+  var searchPending = null;
 
   function loadIndex() {
-    if (searchIndex || searchLoading) { return Promise.resolve(searchIndex || []); }
+    if (searchIndex) { return Promise.resolve(searchIndex); }
+    if (searchLoading) { return searchPending; }
     searchLoading = true;
-    return fetch("search-index.json")
+    // searchLoading muss zurueckgesetzt werden, sonst liefert jeder
+    // weitere Aufruf ein sofort aufgeloestes Promise mit [] zurueck und
+    // die Suche bleibt dauerhaft leer.
+    searchPending = fetch("search-index.json")
       .then(function (r) { return r.ok ? r.json() : []; })
       .then(function (data) { searchIndex = data || []; return searchIndex; })
-      .catch(function () { searchIndex = []; return searchIndex; });
+      .catch(function () { searchIndex = []; return searchIndex; })
+      .then(function (v) { searchLoading = false; return v; });
+    return searchPending;
   }
 
   function initSearch() {
