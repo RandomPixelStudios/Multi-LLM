@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Sixteen guides for the things you actually do: add a provider, cut costs, move machines, recover from a failure." />
+  <title>Guides – Multi LLM</title>
+  <link rel="icon" type="image/png" href="assets/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="docs.css?v=7" />
+  <script>try{var p=JSON.parse(localStorage.getItem("ml-prefs"));if(p&&p.theme==="light"){document.documentElement.setAttribute("data-theme","light");}}catch(e){}</script>
+</head>
+<body class="docs-page" data-page="guides">
+  <header class="topbar" id="topbar-slot"></header>
+
+  <main class="docs-page">
+    <div class="docs-shell">
+      <aside class="docs-left">
+        <div class="doc-search-wrap">
+          <span class="search-icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+          <input id="doc-search" class="doc-search" type="search" placeholder="Search the docs…" autocomplete="off" spellcheck="false" aria-label="Search documentation" />
+          <div class="search-results hidden" id="search-results"></div>
+        </div>
+        <nav class="toc" aria-label="On this page">
+          <div class="toc-group">
+            <h5>Setup</h5>
+            <a href="#guide-providers" class="toc-sub">Set up a provider</a>
+            <a href="#guide-local" class="toc-sub">Local engines</a>
+            <a href="#guide-proxy" class="toc-sub">HTTPS reverse proxy</a>
+            <a href="#guide-onboarding" class="toc-sub">Team onboarding</a>
+          </div>
+          <div class="toc-group">
+            <h5>Everyday work</h5>
+            <a href="#guide-costs" class="toc-sub">Cut token costs</a>
+            <a href="#guide-compression" class="toc-sub">Compression in practice</a>
+            <a href="#guide-strategy" class="toc-sub">Choosing a strategy</a>
+            <a href="#guide-recipes" class="toc-sub">Bundle recipes</a>
+            <a href="#guide-tiers" class="toc-sub">Bundle tiers</a>
+            <a href="#guide-migration" class="toc-sub">Migrating from direct use</a>
+          </div>
+          <div class="toc-group">
+            <h5>Keeping it running</h5>
+            <a href="#guide-troubleshoot" class="toc-sub">Troubleshooting</a>
+            <a href="#guide-security" class="toc-sub">Security</a>
+            <a href="#guide-backup-solo" class="toc-sub">Backup</a>
+            <a href="#guide-sharing" class="toc-sub">Sharing with a team</a>
+            <a href="#guide-update" class="toc-sub">Updating</a>
+            <a href="#guide-newpc" class="toc-sub">Moving machines</a>
+          </div>
+          <div class="toc-group">
+            <h5>Pages</h5>
+            <div id="page-list"></div>
+          </div>
+        </nav>
+      </aside>
+
+      <article class="doc-main">
+        <span class="doc-eyebrow">Task-shaped walkthroughs</span>
+        <h1>Guides</h1>
+        <p class="doc-lede">Sixteen guides for the things you actually do: add a provider, cut costs, move machines, recover from a failure.</p>
+
+        <section class="doc-section" id="guide-providers">
+          <h2>Set up a provider</h2>
+          <p>One provider, one key, one working request. Repeat per service.</p>
+          <ol class="steps">
+            <li>
+              <h4>Get the key</h4>
+              <p>From the provider's own dashboard. Keep the page open &mdash; you
+                will need the model list later.</p>
+            </li>
+            <li>
+              <h4>Add it in Multi LLM</h4>
+              <p><strong>Providers &rsaquo; Add provider</strong>, pick the service from
+                the list, paste the key. The base URL and format are filled in for
+                you.</p>
+            </li>
+            <li>
+              <h4>Test it</h4>
+              <p>Use the test button on the card. Success reports the latency;
+                failure names the cause.</p>
+            </li>
+            <li>
+              <h4>Enable what you want</h4>
+              <p>Only enabled models receive requests. Turn on the ones you actually
+                use &mdash; a smaller list routes faster and fails over less often.</p>
+            </li>
+            <li>
+              <h4>Confirm through the proxy</h4>
+              <p>Run the curl request from
+                <a href="getting-started.html#verify">Verify it works</a> using the
+                model id from the card.</p>
+            </li>
+          </ol>
+
+          <h3>Reading a failure</h3>
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>The dialog says</th><th>It means</th></tr></thead>
+              <tbody>
+                <tr><td>HTTP 401 or 403</td><td>The key is wrong, expired, or lacks permission for that model.</td></tr>
+                <tr><td>HTTP 404</td><td>Wrong base URL, or the model does not exist at that provider.</td></tr>
+                <tr><td>Timeout</td><td>No route to the provider &mdash; firewall, proxy, or the provider is down.</td></tr>
+                <tr><td>Parse error</td><td>Something answered, but not JSON. Often a captive portal or a corporate proxy.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="doc-section" id="guide-local">
+          <h2>Local engines</h2>
+          <p>A local model needs no key and no network &mdash; the most private option
+            and the one that keeps working when the internet does not.</p>
+
+          <h3>Ollama</h3>
+          <p>Start it, then add the provider in Multi LLM:</p>
+          <div class="doc-code">Base URL:  http://localhost:11434/v1
+API key:   (leave empty)
+Format:    OpenAI</div>
+          <p>Ollama serves an OpenAI-compatible API on port 11434. Pull a model first
+            with <code>ollama pull llama3</code>, then refresh in the provider editor
+            so it appears.</p>
+
+          <h3>LM Studio</h3>
+          <div class="doc-code">Base URL:  http://localhost:1234/v1
+API key:   (leave empty)</div>
+          <p>Start the local server in LM Studio before adding it. The port is 1234
+            unless you changed it.</p>
+
+          <h3>vLLM</h3>
+          <div class="doc-code">vllm serve mistral-7b --port 8000
+
+Base URL:  http://localhost:8000/v1
+API key:   (leave empty)</div>
+          <p>vLLM takes an explicit model name at start-up. Use exactly that name in
+            requests, or add an alias so it reads better.</p>
+
+          <div class="callout">
+            <span class="callout-title">Local does not mean free</span>
+            <p>It means no per-token cost. The electricity, the hardware and the time
+              are yours. A local model in a bundle trades quality against the cloud
+              models &mdash; see the recipes below.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="guide-proxy">
+          <h2>HTTPS reverse proxy</h2>
+          <p>Needed only if a tool refuses plain HTTP. Caddy is the shortest
+            configuration; nginx is the one you likely already run.</p>
+
+          <h3>With Caddy</h3>
+          <div class="doc-code">llm.example.com {
+  reverse_proxy localhost:5000
+}</div>
+          <p>Caddy fetches and renews a certificate on its own. The tool then uses
+            <code>https://llm.example.com/v1</code>.</p>
+
+          <h3>With nginx</h3>
+          <div class="doc-code">server {
+  listen 443 ssl http2;
+  server_name llm.example.com;
+
+  ssl_certificate     /etc/letsencrypt/live/llm.example.com/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/llm.example.com/privkey.pem;
+
+  location / {
+    proxy_pass         http://127.0.0.1:5000;
+    proxy_http_version 1.1;
+    proxy_set_header   Host $host;
+    proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+
+    # streaming responses must not be buffered
+    proxy_buffering off;
+    proxy_read_timeout 600s;
+  }
+}</div>
+
+          <div class="callout warn">
+            <span class="callout-title">Disable proxy buffering for streaming</span>
+            <p><code>proxy_buffering off</code> is what makes streaming work. With the
+              default on, nginx collects the whole response and your tool shows
+              nothing until the answer is complete.</p>
+          </div>
+
+          <h3>Set the secure-cookie flag</h3>
+          <p>When serving over HTTPS, set <code>MULTI_LLM_COOKIE_SECURE=1</code> in
+            server mode so session cookies are not sent over plain HTTP.</p>
+        </section>
+
+        <section class="doc-section" id="guide-onboarding">
+          <h2>Team onboarding</h2>
+          <p>For a small group on one machine or a server. A checklist you can hand
+            over as-is.</p>
+
+          <ol class="steps">
+            <li>
+              <h4>Install and create the first account</h4>
+              <p>The first account is automatically the admin. It can see and manage
+                the user list.</p>
+            </li>
+            <li>
+              <h4>Decide where this runs</h4>
+              <p>Someone's desktop, or a server via
+                <a href="docker.html">Docker</a>. A desktop works for a team that sits
+                together; a server for anyone remote.</p>
+            </li>
+            <li>
+              <h4>Add provider keys</h4>
+              <p>Either the admin configures all providers centrally, or each user
+                adds their own keys. The first is easier to manage; the second keeps
+                costs attributable.</p>
+            </li>
+            <li>
+              <h4>Give each member a key</h4>
+              <p>Under <strong>API &rsaquo; API Keys</strong>, create a separate key per
+                person or per tool. Now you can see who did what and revoke one
+                without disturbing the rest.</p>
+            </li>
+            <li>
+              <h4>Hand over the three values</h4>
+              <p>URL, key, model. Use
+                <strong>API &rsaquo; Client config snippets</strong> to generate a
+                ready-to-paste block per tool.</p>
+            </li>
+            <li>
+              <h4>Set the budget</h4>
+              <p>A daily limit in settings makes the usage panel warn at 80 percent.
+                Cheap insurance against one runaway loop.</p>
+            </li>
+          </ol>
+
+          <div class="callout">
+            <span class="callout-title">On a shared server, use server mode</span>
+            <p>Each account gets its own providers, models, usage history and port.
+              That is what <code>MULTI_LLM_SERVER=1</code> &mdash; see
+              <a href="docker.html">Docker</a>.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="guide-costs">
+          <h2>Cut token costs</h2>
+          <p>Two levers, in order of effect.</p>
+
+          <h3>1. Find the expensive part</h3>
+          <p>The usage panel ranks models by tokens, with cost estimates. One runaway
+            conversation is usually most of the bill. Look there first before changing
+            anything.</p>
+
+          <h3>2. Compress the prompts</h3>
+          <p><strong>Settings &rsaquo; Token compression</strong>, strength 4 to 6.
+            See <a href="configuration.html#config-compression">compression</a> for what
+            it does and does not touch.</p>
+
+          <h3>3. Pin cheap models to cheap work</h3>
+          <p>Give a cheap model its own bundle and point a tool or a task at it
+            explicitly, instead of letting <code>multillm</code> pick randomly for
+            everything.</p>
+
+          <h3>What does not save anything</h3>
+          <ul>
+            <li><strong>Shorter <code>max_tokens</code> only caps a cost you were going
+              to pay anyway.</strong> Models stop when they are done.</li>
+            <li><strong>Caching identical prompts</strong> only helps if you really
+              send identical ones.</li>
+            <li><strong>Compressing code.</strong> Excluded on purpose; it would
+              change the code.</li>
+          </ul>
+
+          <div class="callout warn">
+            <span class="callout-title">Context is where the money goes</span>
+            <p>Long conversations re-send the whole history every turn. Starting a
+              fresh session, or summarising the history, saves more than any setting
+              in the app.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="guide-compression">
+          <h2>Compression in practice</h2>
+          <p>What actually changes at each strength level on a real prompt.</p>
+
+          <div class="doc-code" data-copy="Please kindly analyse the following text in detail and explain it to me.
+
+TEXT
+
+Please analyse the following text and explain it.
+
+TEXT">Please kindly analyse the following text in detail and explain it to me.
+
+TEXT
+
+Please analyse the following text and explain it.
+
+TEXT</div>
+          <p>Level 1 to 3 removes courtesy padding. The instruction itself is intact.</p>
+
+          <div class="doc-code" data-copy="def load(path):
+    with open(path) as f:
+        return json.load(f)">def load(path):
+    with open(path) as f:
+        return json.load(f)</div>
+          <p>Code is never rewritten, at any level. Same for JSON, fenced blocks and
+            anything that looks like a literal.</p>
+
+          <h3>When to turn it off</h3>
+          <ul>
+            <li>Prompts where exact wording matters, for example a legal or medical
+              question you need reproduced faithfully.</li>
+            <li>When you are debugging what the model actually received.</li>
+            <li>Short prompts &mdash; there is nothing to save.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section" id="guide-strategy">
+          <h2>Choosing a strategy</h2>
+          <p>One question decides it: do you care more about a single good answer or
+            about it always being available?</p>
+
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>If you…</th><th>Use</th></tr></thead>
+              <tbody>
+                <tr><td>Want the best model available right now</td><td><code>latency</code> or <code>fastest</code></td></tr>
+                <tr><td>Want predictable behaviour</td><td><code>priority</code></td></tr>
+                <tr><td>Want every model used fairly</td><td><code>round_robin</code></td></tr>
+                <tr><td>Have long conversations</td><td><code>sticky</code></td></tr>
+                <tr><td>Are not sure</td><td><code>weighted</code> and star what works</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Starting with weighted</h3>
+          <p>Run a week, look at the usage panel, star the models you were happy
+            with. That produces a better mix than any theoretical default, because it
+            is based on your actual tasks.</p>
+
+          <h3>When latency is the wrong choice</h3>
+          <p><code>latency</code> optimises for the average. A model that is usually
+            fast and occasionally very slow can still be picked. If reliability
+            matters more, <code>priority</code> or <code>weighted</code> with stars
+            behaves better.</p>
+        </section>
+
+        <section class="doc-section" id="guide-recipes">
+          <h2>Bundle recipes</h2>
+          <p>Four bundles worth copying. Create each one under
+            <strong>Virtual Models &rsaquo; Create</strong>.</p>
+
+          <h3>fast</h3>
+          <p>Strategy <code>fastest</code>. Members: whichever low-latency models you
+            have. Good for autocomplete, quick edits, anything where you would rather
+            correct a mediocre answer than wait for a good one.</p>
+
+          <h3>cheap</h3>
+          <p>Strategy <code>priority</code>. Members: your smallest and cheapest model
+            first, anything else second. This is the one to point at for bulk work.</p>
+
+          <h3>private</h3>
+          <p>Strategy <code>round_robin</code>. Members: local engines only. Nothing
+            leaves the machine, which makes this the bundle for sensitive input.</p>
+
+          <h3>balanced</h3>
+          <p>Strategy <code>weighted</code>, best model starred. The default bundle
+            is already this; the recipe exists so you can see the intent.</p>
+
+          <div class="callout">
+            <span class="callout-title">Name them for what they are</span>
+            <p><code>cheap</code> and <code>quality</code> in the tool's model field
+              say far more than <code>bundle1</code>. The name is what a user sees in
+              a model picker.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="guide-tiers">
+          <h2>Bundle tiers</h2>
+          <p>When one bundle cannot serve everything, split by quality and point each
+            task at its tier.</p>
+
+          <ol class="steps">
+            <li>
+              <h4>Group your models by tier</h4>
+              <p>Frontier, mid-tier, small. The names are yours; the point is that
+                each group is a bundle.</p>
+            </li>
+            <li>
+              <h4>Give each a strategy</h4>
+              <p><code>quality</code> gets <code>priority</code> with the best model
+                first. <code>standard</code> and <code>draft</code> get
+                <code>fastest</code>.</p>
+            </li>
+            <li>
+              <h4>Map tasks to tiers</h4>
+              <p>Code completion to <code>draft</code>, everyday chat to
+                <code>standard</code>, hard problems to <code>quality</code>. The tier
+                names in your tool's model field are the only thing that changes.</p>
+            </li>
+            <li>
+              <h3>Adjust as you learn</h3>
+              <p>If a tier is slower or more expensive than expected, change the
+                strategy rather than moving models around.</p>
+            </li>
+          </ol>
+        </section>
+
+        <section class="doc-section" id="guide-migration">
+          <h2>Migrating from direct use</h2>
+          <p>If you currently call providers directly, the change is mechanical.</p>
+
+          <ol class="steps">
+            <li>
+              <h4>Install and add your providers</h4>
+              <p>Add what you already have configured, with the same keys.</p>
+            </li>
+            <li>
+              <h4>Swap the base URL</h4>
+              <p>Every tool: <code>https://api.openai.com/v1</code> becomes
+                <code>http://localhost:5000/v1</code>. Nothing else changes at first.</p>
+            </li>
+            <li>
+              <h4>Swap the key</h4>
+              <p>Use your local key. Provider keys stay behind the proxy &mdash; that is
+                the point.</p>
+            </li>
+            <li>
+              <h4>Keep using the same model names</h4>
+              <p>Exact ids work unchanged, so this step is behaviour-preserving. Move
+                to <code>multillm</code> only once you trust it.</p>
+            </li>
+            <li>
+              <h4>Then start routing</h4>
+              <p>Swap in a bundle name where you want automatic choice. Keep the
+                explicit names where you want control.</p>
+            </li>
+          </ol>
+
+          <div class="callout ok">
+            <span class="callout-title">Roll back any time</span>
+            <p>Point the base URL back at the provider and put the provider key in
+              again. Nothing was migrated, so nothing needs migrating back.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="guide-troubleshoot">
+          <h2>Troubleshooting</h2>
+          <p>Work in this order. It goes from the cheap check to the invasive one.</p>
+
+          <h3>1. Is the proxy running?</h3>
+          <p>The status line at the top of the window. Grey means stopped; red carries
+            a message. <code>curl http://localhost:5000/v1/models</code> is the same
+            check from outside.</p>
+
+          <h3>2. Does the provider work?</h3>
+          <p>Test button on the provider card. This isolates the problem to one side:
+            the proxy or the provider.</p>
+
+          <h3>3. Is the key right in the tool?</h3>
+          <p>Copy it again from <strong>API &rsaquo; API Keys</strong>. A key
+            regenerated earlier has already stopped working.</p>
+
+          <h3>4. Is the base URL field name right?</h3>
+          <p>Tools disagree about the name. See the
+            <a href="connect.html#field-names">field name table</a>. An unrecognised
+            field is silently ignored and the tool talks to the real provider.</p>
+
+          <h3>5. Is the model enabled?</h3>
+          <p>The card shows <code>enabled / total</code>. All models configured and
+            none enabled is a frequent cause.</p>
+
+          <h3>6. Read the error text</h3>
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>Error</th><th>Cause</th><th>Fix</th></tr></thead>
+              <tbody>
+                <tr><td><code>connection refused</code></td><td>Nothing is listening</td><td>Start the proxy; check the port</td></tr>
+                <tr><td><code>invalid_api_key</code></td><td>Wrong key for this proxy</td><td>Copy the local key again</td></tr>
+                <tr><td><code>model does not exist or is not enabled</code></td><td>Not configured, or switched off</td><td>Enable it, or use another name</td></tr>
+                <tr><td><code>HTTP 401</code> upstream</td><td>Provider rejected the key</td><td>Provider dashboard &rarr; regenerate</td></tr>
+                <tr><td>Empty choices array</td><td>Response filtered out by safety</td><td>Rephrase; the provider declined</td></tr>
+                <tr><td>Works in curl, not in the tool</td><td>Field name or /v1 suffix</td><td>Check the table in step 4</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>7. Still stuck</h3>
+          <p><strong>Settings &rsaquo; Export usage</strong> gives you the request
+            history to attach to a bug report. Never export <em>config</em> with keys
+            for this purpose.</p>
+        </section>
+
+        <section class="doc-section" id="guide-security">
+          <h2>Security</h2>
+
+          <h3>The threat model</h3>
+          <p>Multi LLM holds your provider keys. The realistic risks are: someone
+            else using your proxy, and a provider key leaking out of the app.</p>
+
+          <h3>Keep it on localhost</h3>
+          <p>The default. Anyone who reaches your proxy with your key spends your
+            money. Expose to LAN only on a network you control.</p>
+
+          <h3>Separate keys per tool and per person</h3>
+          <p>Extra keys can be limited to specific models and to requests per minute.
+            One key per tool means you can revoke a single integration without
+            breaking everything.</p>
+
+          <h3>Accounts are local</h3>
+          <p>Passwords are stored as argon2id hashes, not readable text. Comparison
+            takes the same time regardless of how much matches, so a wrong key cannot
+            be found by timing. Failed logins are throttled per IP.</p>
+
+          <h3>Do not export config with keys</h3>
+          <p>Unless the destination is entirely yours. The file is plain text and
+            contains real credentials.</p>
+
+          <h3>Public networks</h3>
+          <p>On a shared or untrusted network, expose nothing. Use a tunnel, or run
+            locally. Anything that can reach the port can spend your money.</p>
+
+          <h3>Updates</h3>
+          <p>Multi LLM never installs itself. The update check only fetches a version
+              file; downloading is always your decision.</p>
+        </section>
+
+        <section class="doc-section" id="guide-backup">
+          <h2>Backup</h2>
+          <p>Three things are worth keeping: your configuration, your usage history,
+            and your accounts.</p>
+
+          <h3>Configuration</h3>
+          <p><strong>Settings &rsaquo; Data &rsaquo; Export config</strong>, keys
+            <em>excluded</em>. That file is the whole setup minus the secrets, and it
+            is what you restore on a new machine.</p>
+
+          <h3>Usage history</h3>
+          <p><strong>Export usage</strong> for accounting. It is not part of the
+            configuration export.</p>
+
+          <h3>Accounts and keys</h3>
+          <p>These live only in your profile directory and are not covered by the
+            config export. Copy the directory itself, while the app is closed.</p>
+
+          <h3>Where it is</h3>
+          <p>Your user profile directory, with one folder per user. Exact paths per
+            platform are in the
+            <a href="configuration.html#config-data">data section</a>.</p>
+
+          <div class="callout warn">
+            <span class="callout-title">Back up before updating</span>
+            <p>A beta can change its settings format. A config export takes ten
+              seconds and saves the session.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="guide-sharing">
+          <h2>Sharing with a team</h2>
+          <p>Two approaches, depending on whether members bring their own keys.</p>
+
+          <h3>Shared keys</h3>
+          <p>The admin configures providers once. Everyone uses the same setup, and
+            the cost is shared. Simple, and you cannot attribute usage to a person
+            without giving each one a key.</p>
+
+          <h3>Per-member keys</h3>
+          <p>Each member adds their own providers. Costs are theirs, and you cannot
+            see them. The right choice when people pay for their own accounts.</p>
+
+          <h3>Handing over a setup</h3>
+          <ol>
+            <li>Export a config with keys <em>excluded</em>.</li>
+            <li>Send the file, plus the <a href="connect.html">page for their
+              tool</a>.</li>
+            <li>They import it, then add their own keys.</li>
+            <li>Give each member their own local key under
+              <strong>API &rsaquo; API Keys</strong>.</li>
+          </ol>
+
+          <h3>Setting the ground rules</h3>
+          <ul>
+            <li>What the local key may be used for, and where it may be pasted.</li>
+            <li>Whether Expose to LAN is allowed, and on which networks.</li>
+            <li>Who to ask when a provider is down.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section" id="guide-update">
+          <h2>Updating</h2>
+
+          <h3>Check, then install manually</h3>
+          <p>Settings &rsaquo; App &rsaquo; Check for updates reports a new version and
+            gives you the link. Download the package for the platform, install over
+            the old version, restart.</p>
+
+          <h3>Before you update</h3>
+          <ol>
+            <li>Export your config, without keys.</li>
+            <li>Note your version, in case you need to go back.</li>
+          </ol>
+
+          <h3>What changes between versions</h3>
+          <p>Beta software means the settings format can change. An import that looks
+            wrong is usually a renamed field, not lost data &mdash; check the release
+            notes first.</p>
+
+          <h3>Going back</h3>
+          <p>Install the older package over the newer one. Your configuration lives in
+            your profile and is only read by the app, so an older build finds it
+            again. Export first regardless.</p>
+
+          <h3>Update checks and privacy</h3>
+          <p>One request to GitHub for a version file, no identifying data. Switch it
+            off in settings to make no outbound request at all.</p>
+        </section>
+
+        <section class="doc-section" id="guide-newpc">
+          <h2>Moving machines</h2>
+          <ol class="steps">
+            <li>
+              <h4>On the old machine</h4>
+              <p>Export config without keys, and note your version.</p>
+            </li>
+            <li>
+              <h4>Install on the new one</h4>
+              <p>Same or newer version. Start it once so the profile directory
+                exists, then quit.</p>
+            </li>
+            <li>
+              <h4>Import</h4>
+              <p>Settings &rsaquo; Data &rsaquo; Import config. The same import that
+                reads it on the old machine restores it here.</p>
+            </li>
+            <li>
+              <h4>Re-enter provider keys</h4>
+              <p>Deliberately not in the export. Copy them from the providers' own
+                dashboards.</p>
+            </li>
+            <li>
+              <h4>Re-point your tools</h4>
+              <p>Same URL if the port matches, otherwise the new one. Nothing else
+                changes.</p>
+            </li>
+          </ol>
+
+          <div class="callout">
+            <span class="callout-title">Accounts need the profile folder</span>
+            <p>Config import does not bring accounts across. On the new machine, create
+              the first account again. For several users, copy the profile directory
+              with the app closed.</p>
+          </div>
+        </section>
+
+        <nav class="doc-pager">
+          <a href="configuration.html"><span class="dp-dir">Previous</span><span class="dp-title">…</span></a>
+          <a class="dp-next" href="api.html"><span class="dp-dir">Next</span><span class="dp-title">…</span></a>
+        </nav>
+      </article>
+    </div>
+  </main>
+
+  <footer class="sitefoot" id="footer-slot"></footer>
+  <div class="consent hidden" id="consent-banner" role="region" aria-label="Privacy settings"><div id="consent-slot"></div></div>
+
+  <script src="docs-common.js"></script>
+  <script>
+    (function () {
+      var P = window.DOC_PAGES;
+      var cur = "guides";
+      var i = P.findIndex(function (p) { return p.key === cur; });
+      var prev = P[i - 1], next = P[i + 1];
+      var p = document.querySelector(".doc-pager a:not(.dp-next) .dp-title");
+      var n = document.querySelector(".doc-pager .dp-next .dp-title");
+      if (p && prev) { p.textContent = prev.title; }
+      if (n && next) { n.textContent = next.title; }
+    })();
+  </script>
+</body>
+</html>

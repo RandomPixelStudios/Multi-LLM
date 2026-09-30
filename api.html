@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="The OpenAI-compatible surface, the error format, and copy-paste recipes for the common calls." />
+  <title>API reference – Multi LLM</title>
+  <link rel="icon" type="image/png" href="assets/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="docs.css?v=7" />
+  <script>try{var p=JSON.parse(localStorage.getItem("ml-prefs"));if(p&&p.theme==="light"){document.documentElement.setAttribute("data-theme","light");}}catch(e){}</script>
+</head>
+<body class="docs-page" data-page="api">
+  <header class="topbar" id="topbar-slot"></header>
+
+  <main class="docs-page">
+    <div class="docs-shell">
+      <aside class="docs-left">
+        <div class="doc-search-wrap">
+          <span class="search-icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+          <input id="doc-search" class="doc-search" type="search" placeholder="Search the docs…" autocomplete="off" spellcheck="false" aria-label="Search documentation" />
+          <div class="search-results hidden" id="search-results"></div>
+        </div>
+        <nav class="toc" aria-label="On this page">
+          <div class="toc-group">
+            <h5>Reference</h5>
+            <a href="#api-auth" class="toc-sub">Authentication</a>
+            <a href="#api-inference" class="toc-sub">Inference endpoints</a>
+            <a href="#api-models" class="toc-sub">Models</a>
+            <a href="#api-errors" class="toc-sub">Error format</a>
+            <a href="#api-headers" class="toc-sub">Headers and limits</a>
+          </div>
+          <div class="toc-group">
+            <h5>Cookbook</h5>
+            <a href="#cb-basic" class="toc-sub">A chat request</a>
+            <a href="#cb-stream" class="toc-sub">Streaming</a>
+            <a href="#cb-models" class="toc-sub">List models</a>
+            <a href="#cb-embed" class="toc-sub">Embeddings</a>
+            <a href="#cb-responses" class="toc-sub">Responses API</a>
+            <a href="#cb-bundle" class="toc-sub">Using a bundle</a>
+            <a href="#cb-node" class="toc-sub">Node</a>
+            <a href="#cb-python" class="toc-sub">Python</a>
+            <a href="#cb-jq" class="toc-sub">jq</a>
+          </div>
+          <div class="toc-group">
+            <h5>Pages</h5>
+            <div id="page-list"></div>
+          </div>
+        </nav>
+      </aside>
+
+      <article class="doc-main">
+        <span class="doc-eyebrow">Endpoints</span>
+        <h1>API reference</h1>
+        <p class="doc-lede">The OpenAI-compatible surface, the error format, and copy-paste recipes for the common calls.</p>
+
+        <section class="doc-section" id="api-auth">
+          <h2>Authentication</h2>
+          <p>Every request needs your local key. It authenticates you to your own
+            proxy; it is not a provider credential.</p>
+
+          <div class="doc-code">Authorization: Bearer YOUR_LOCAL_KEY</div>
+
+          <p>Without a valid key the response is
+            <code>401</code> with <code>invalid_api_key</code>. Extra keys may be
+            limited to specific models or to a requests-per-minute ceiling; exceeding
+            the ceiling gives <code>429</code>.</p>
+
+          <div class="callout">
+            <span class="callout-title">Your provider keys are never involved</span>
+            <p>Your tool authenticates with the local key. Multi LLM uses your provider
+              keys on the far side, and neither key is visible to the other.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="api-inference">
+          <h2>Inference endpoints</h2>
+          <p>Standard OpenAI paths under <code>/v1</code>. Anything outside this list
+            is refused rather than relayed blindly.</p>
+
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>Method</th><th>Path</th><th>Body</th></tr></thead>
+              <tbody>
+                <tr><td>POST</td><td><code>/v1/chat/completions</code></td><td><code>model</code>, <code>messages</code>, optional <code>stream</code>, <code>temperature</code>, <code>max_tokens</code>, <code>tools</code></td></tr>
+                <tr><td>POST</td><td><code>/v1/completions</code></td><td><code>model</code>, <code>prompt</code></td></tr>
+                <tr><td>POST</td><td><code>/v1/responses</code></td><td><code>model</code>, <code>input</code></td></tr>
+                <tr><td>POST</td><td><code>/v1/embeddings</code></td><td><code>model</code>, <code>input</code></td></tr>
+                <tr><td>POST</td><td><code>/v1/moderations</code></td><td><code>input</code></td></tr>
+                <tr><td>GET</td><td><code>/v1/models</code></td><td>&mdash;</td></tr>
+                <tr><td>POST</td><td><code>/v1/images/*</code></td><td>relayed to the provider</td></tr>
+                <tr><td>POST</td><td><code>/v1/audio/*</code></td><td>relayed to the provider</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>The request is translated to whatever the resolved provider speaks. A
+            body that OpenAI accepts therefore works against an Anthropic or Gemini
+            model without changes on your side.</p>
+
+          <h3>Base URL</h3>
+          <div class="doc-code">http://localhost:5000/v1</div>
+        </section>
+
+        <section class="doc-section" id="api-models">
+          <h2>Models</h2>
+          <p><code>GET /v1/models</code> returns the ids your tools may request:</p>
+          <div class="doc-code">{
+  "object": "list",
+  "data": [
+    { "id": "multillm", "object": "model", "owned_by": "local" },
+    { "id": "gpt-4o", "object": "model", "owned_by": "openai" }
+  ]
+}</div>
+          <p>The list contains enabled models plus the virtual models you created.
+            Models that exist but are switched off appear only if
+            <strong>All models</strong> is on in the API panel.</p>
+
+          <p>Most tools do not call this at all &mdash; they use whatever you type into
+            their model field. It is still useful for scripts and for
+            troubleshooting.</p>
+        </section>
+
+        <section class="doc-section" id="api-errors">
+          <h2>Error format</h2>
+          <p>Errors follow the OpenAI shape, so SDKs that expect it work unchanged:</p>
+          <div class="doc-code">{
+  "error": {
+    "code": "invalid_api_key",
+    "message": "Missing or invalid API key.",
+    "type": "invalid_request_error"
+  }
+}</div>
+
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>HTTP</th><th><code>code</code></th><th>Meaning</th></tr></thead>
+              <tbody>
+                <tr><td>400</td><td><code>invalid_request</code></td><td>Malformed body, or a model the proxy cannot resolve</td></tr>
+                <tr><td>401</td><td><code>invalid_api_key</code></td><td>Missing or wrong local key</td></tr>
+                <tr><td>404</td><td><code>model_not_found</code></td><td>The model does not exist or is not enabled</td></tr>
+                <tr><td>404</td><td><code>not_found</code></td><td>The path is not one of the relayed endpoints</td></tr>
+                <tr><td>429</td><td><code>rate_limit</code></td><td>Extra key rate limit reached</td></tr>
+                <tr><td>502</td><td><code>upstream_error</code></td><td>The provider failed; the message carries its reason</td></tr>
+                <tr><td>503</td><td><code>no_provider</code></td><td>No healthy model in the bundle, or the breaker is open everywhere</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>An upstream <code>502</code> contains the provider's own error text, so you
+            can tell a rate limit there from a quota problem.</p>
+        </section>
+
+        <section class="doc-section" id="api-headers">
+          <h2>Headers and limits</h2>
+          <div class="deflist">
+            <div class="defrow">
+              <dt>Request size</dt>
+              <dd>64 MB on <code>/v1</code>, 8 MB on management endpoints.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Stream timeout</dt>
+              <dd>20 seconds to first byte, then the connection stays open for the
+                stream.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Failed logins</dt>
+              <dd>10 per minute per IP, then a 60-second block.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Key comparison</dt>
+              <dd>Constant time, so a wrong key cannot be found by measuring.</dd>
+            </div>
+          </div>
+
+          <h3>Request forwarding</h3>
+          <p>Your headers pass through to the provider unless they are proxy-specific.
+            The <code>Authorization</code> header is the exception: it is replaced with
+            the provider's own credential, and yours never leaves the machine.</p>
+        </section>
+
+        <section class="doc-section" id="cb-basic">
+          <h2>Cookbook: a chat request</h2>
+          <div class="doc-code">curl http://localhost:5000/v1/chat/completions \
+  -H "Authorization: Bearer YOUR_LOCAL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "multillm",
+    "messages": [
+      { "role": "system", "content": "Answer in one sentence." },
+      { "role": "user", "content": "What is a circuit breaker?" }
+    ],
+    "temperature": 0.2
+  }'</div>
+          <p>Lower <code>temperature</code> for factual questions, higher for open-ended
+            ones. It is forwarded to the provider unchanged.</p>
+        </section>
+
+        <section class="doc-section" id="cb-stream">
+          <h2>Cookbook: streaming</h2>
+          <div class="doc-code">curl -N http://localhost:5000/v1/chat/completions \
+  -H "Authorization: Bearer YOUR_LOCAL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "multillm",
+    "messages": [{"role": "user", "content": "Write a haiku about proxies."}],
+    "stream": true
+  }'</div>
+          <p><code>-N</code> disables curl's own buffering. Without it the output still
+            arrives, but in one piece at the end.</p>
+        </section>
+
+        <section class="doc-section" id="cb-models">
+          <h2>Cookbook: list models</h2>
+          <div class="doc-code">curl -s http://localhost:5000/v1/models \
+  -H "Authorization: Bearer YOUR_LOCAL_KEY" \
+  | jq -r '.data[].id'</div>
+          <p>Paste the output straight into a tool's model field. If a name is missing
+            from this list, that tool cannot use it.</p>
+        </section>
+
+        <section class="doc-section" id="cb-embed">
+          <h2>Cookbook: embeddings</h2>
+          <div class="doc-code">curl http://localhost:5000/v1/embeddings \
+  -H "Authorization: Bearer YOUR_LOCAL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "text-embedding-3-small",
+    "input": "Multi LLM routes every provider behind one endpoint."
+  }'</div>
+          <p>Embeddings bypass routing &mdash; the model is used exactly as named. They
+            also bypass failover, because a partial vector is worse than none.</p>
+        </section>
+
+        <section class="doc-section" id="cb-responses">
+          <h2>Cookbook: the Responses API</h2>
+          <div class="doc-code">curl http://localhost:5000/v1/responses \
+  -H "Authorization: Bearer YOUR_LOCAL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "multillm",
+    "input": "Name three benefits of a local proxy."
+  }'</div>
+          <p>For tools written against OpenAI's newer Responses interface. The request
+            is translated to whichever provider the bundle picks.</p>
+        </section>
+
+        <section class="doc-section" id="cb-bundle">
+          <h2>Cookbook: choosing a model explicitly</h2>
+          <p>Replace <code>multillm</code> in any of the above with:</p>
+          <ul>
+            <li><code>gpt-4o</code> &mdash; exactly that provider's model, no routing</li>
+            <li><code>cheap</code> &mdash; your own bundle, strategy decides</li>
+            <li><code>private</code> &mdash; local models only</li>
+          </ul>
+          <p>Exact ids still fail over, because the circuit breaker applies to the
+            provider regardless. Bundles fail over <em>and</em> choose.</p>
+        </section>
+
+        <section class="doc-section" id="cb-node">
+          <h2>Cookbook: Node</h2>
+          <div class="doc-code">import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: "http://localhost:5000/v1",
+  apiKey: "YOUR_LOCAL_KEY",
+});
+
+const stream = await client.chat.completions.create({
+  model: "multillm",
+  messages: [{ role: "user", content: "Explain failover in two sentences." }],
+  stream: true,
+});
+
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content ?? "");
+}</div>
+        </section>
+
+        <section class="doc-section" id="cb-python">
+          <h2>Cookbook: Python</h2>
+          <div class="doc-code">from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:5000/v1",
+    api_key="YOUR_LOCAL_KEY",
+)
+
+stream = client.chat.completions.create(
+    model="multillm",
+    messages=[{"role": "user", "content": "Explain failover in two sentences."}],
+    stream=True,
+)
+
+for chunk in stream:
+    print(chunk.choices[0].delta.content or "", end="", flush=True)</div>
+          <p>There is nothing Multi-LLM-specific in either SDK. The three values are the
+            whole integration.</p>
+        </section>
+
+        <section class="doc-section" id="cb-jq">
+          <h2>Cookbook: jq</h2>
+          <div class="doc-code">curl -s http://localhost:5000/v1/chat/completions \
+  -H "Authorization: Bearer YOUR_LOCAL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"multillm","messages":[{"role":"user","content":"ping"}]}' \
+  | jq -r '.choices[0].message.content'</div>
+          <p>For shell scripts and health checks. Add
+            <code>| jq -r '.usage.total_tokens'</code> to see the cost of one
+            call.</p>
+        </section>
+
+        <nav class="doc-pager">
+          <a href="guides.html"><span class="dp-dir">Previous</span><span class="dp-title">…</span></a>
+          <a class="dp-next" href="docker.html"><span class="dp-dir">Next</span><span class="dp-title">…</span></a>
+        </nav>
+      </article>
+    </div>
+  </main>
+
+  <footer class="sitefoot" id="footer-slot"></footer>
+  <div class="consent hidden" id="consent-banner" role="region" aria-label="Privacy settings"><div id="consent-slot"></div></div>
+
+  <script src="docs-common.js"></script>
+  <script>
+    (function () {
+      var P = window.DOC_PAGES;
+      var cur = "api";
+      var i = P.findIndex(function (p) { return p.key === cur; });
+      var prev = P[i - 1], next = P[i + 1];
+      var p = document.querySelector(".doc-pager a:not(.dp-next) .dp-title");
+      var n = document.querySelector(".doc-pager .dp-next .dp-title");
+      if (p && prev) { p.textContent = prev.title; }
+      if (n && next) { n.textContent = next.title; }
+    })();
+  </script>
+</body>
+</html>

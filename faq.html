@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Short answers to what people ask most often, grouped by what they were trying to do." />
+  <title>FAQ – Multi LLM</title>
+  <link rel="icon" type="image/png" href="assets/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="docs.css?v=7" />
+  <script>try{var p=JSON.parse(localStorage.getItem("ml-prefs"));if(p&&p.theme==="light"){document.documentElement.setAttribute("data-theme","light");}}catch(e){}</script>
+</head>
+<body class="docs-page" data-page="faq">
+  <header class="topbar" id="topbar-slot"></header>
+
+  <main class="docs-page">
+    <div class="docs-shell">
+      <aside class="docs-left">
+        <div class="doc-search-wrap">
+          <span class="search-icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+          <input id="doc-search" class="doc-search" type="search" placeholder="Search the docs…" autocomplete="off" spellcheck="false" aria-label="Search documentation" />
+          <div class="search-results hidden" id="search-results"></div>
+        </div>
+        <nav class="toc" aria-label="On this page">
+          <div class="toc-group">
+            <h5 style="margin-top:14px;">General</h5>
+            <a href="#general-what-does-multi-llm-actually-do" class="toc-sub">What does Multi LLM actually do?</a>
+            <a href="#general-do-i-need-an-account" class="toc-sub">Do I need an account?</a>
+            <a href="#general-does-it-send-my-data-anywhere" class="toc-sub">Does it send my data anywhere?</a>
+            <a href="#general-is-it-free" class="toc-sub">Is it free?</a>
+            <a href="#general-is-it-stable-enough-for-daily-work" class="toc-sub">Is it stable enough for daily work?</a>
+            <h5 style="margin-top:14px;">Connecting a tool</h5>
+            <a href="#connecting-a-tool-the-tool-still-talks-to-apiopenaicom" class="toc-sub">The tool still talks to api.openai.com</a>
+            <a href="#connecting-a-tool-do-i-need-the-/v1-at-the-end" class="toc-sub">Do I need the /v1 at the end?</a>
+            <a href="#connecting-a-tool-why-does-the-model-list-in-my-tool-stay-empty" class="toc-sub">Why does the model list in my tool stay empty?</a>
+            <a href="#connecting-a-tool-the-tool-cannot-find-localhost" class="toc-sub">The tool cannot find localhost</a>
+            <a href="#connecting-a-tool-streaming-stops-mid-sentence" class="toc-sub">Streaming stops mid-sentence</a>
+            <a href="#connecting-a-tool-my-tool-asks-for-an-api-key-but-i-do-not-have-one" class="toc-sub">My tool asks for an API key but I do not have </a>
+            <h5 style="margin-top:14px;">Providers and models</h5>
+            <a href="#providers-and-models-a-provider-shows-no-models" class="toc-sub">A provider shows no models</a>
+            <a href="#providers-and-models-the-error-says-the-model-does-not-exist-or-is-not-enabled" class="toc-sub">The error says the model does not exist or is </a>
+            <a href="#providers-and-models-can-i-use-a-local-model-like-ollama" class="toc-sub">Can I use a local model like Ollama?</a>
+            <a href="#providers-and-models-how-do-i-make-it-prefer-one-model" class="toc-sub">How do I make it prefer one model?</a>
+            <a href="#providers-and-models-what-is-the-difference-between-a-model-and-a-virtual-model" class="toc-sub">What is the difference between a model and a v</a>
+            <a href="#providers-and-models-does-it-work-with-tool-calling" class="toc-sub">Does it work with tool calling?</a>
+            <h5 style="margin-top:14px;">Accounts and cost</h5>
+            <a href="#accounts-and-cost-how-is-cost-calculated" class="toc-sub">How is cost calculated?</a>
+            <a href="#accounts-and-cost-can-i-set-a-spending-limit" class="toc-sub">Can I set a spending limit?</a>
+            <a href="#accounts-and-cost-who-can-see-my-usage" class="toc-sub">Who can see my usage?</a>
+            <a href="#accounts-and-cost-where-are-my-provider-keys-stored" class="toc-sub">Where are my provider keys stored?</a>
+            <h5 style="margin-top:14px;">Docker and updates</h5>
+            <a href="#docker-and-updates-why-does-nothing-start-after-a-reboot" class="toc-sub">Why does nothing start after a reboot?</a>
+            <a href="#docker-and-updates-can-i-reach-the-proxy-from-the-internet" class="toc-sub">Can I reach the proxy from the internet?</a>
+            <a href="#docker-and-updates-how-do-i-update" class="toc-sub">How do I update?</a>
+            <a href="#docker-and-updates-does-the-update-check-phone-home" class="toc-sub">Does the update check phone home?</a>
+            <a href="#docker-and-updates-i-want-a-remote-team-to-use-this-what-is-the-minimum" class="toc-sub">I want a remote team to use this. What is the </a>
+          </div>
+          <div class="toc-group">
+            <h5>Pages</h5>
+            <div id="page-list"></div>
+          </div>
+        </nav>
+      </aside>
+
+      <article class="doc-main">
+        <span class="doc-eyebrow">Questions</span>
+        <h1>FAQ</h1>
+        <p class="doc-lede">Short answers to what people ask most often, grouped by what they were trying to do.</p>
+        <section class="doc-section" id="general">
+          <h2>General</h2>
+          <div class="faq-item" id="general-what-does-multi-llm-actually-do">
+            <h3>What does Multi LLM actually do?</h3>
+            <p>It puts every LLM provider you have keys for behind one local OpenAI-compatible endpoint, so one URL and one key work in every tool. It also routes between models, fails over when a provider breaks, and keeps your keys on your machine.</p>
+          </div>
+          <div class="faq-item" id="general-do-i-need-an-account">
+            <h3>Do I need an account?</h3>
+            <p>Only for the app itself, and it stays on your machine. There is no sign-up, no e-mail address and no external login. Passwords are stored as argon2id hashes.</p>
+          </div>
+          <div class="faq-item" id="general-does-it-send-my-data-anywhere">
+            <h3>Does it send my data anywhere?</h3>
+            <p>Only to the provider you selected, because that is what a model request <em>is</em>. There is no telemetry, no analytics and no account. The one optional outbound request is the update check, which you can switch off.</p>
+          </div>
+          <div class="faq-item" id="general-is-it-free">
+            <h3>Is it free?</h3>
+            <p>The software is free to install. Your providers bill you directly, and the usage panel estimates what that costs. Local models cost no tokens but use your own electricity and hardware.</p>
+          </div>
+          <div class="faq-item" id="general-is-it-stable-enough-for-daily-work">
+            <h3>Is it stable enough for daily work?</h3>
+            <p>It is beta. The API shape may change between versions. Export your configuration before updating, and expect to read release notes.</p>
+          </div>
+        </section>
+        <section class="doc-section" id="connecting-a-tool">
+          <h2>Connecting a tool</h2>
+          <div class="faq-item" id="connecting-a-tool-the-tool-still-talks-to-apiopenaicom">
+            <h3>The tool still talks to api.openai.com</h3>
+            <p>The base URL field name does not match what the tool expects, so it ignored your value and used its own default. The <a href="connect.html#field-names">field name table</a> lists the name per tool family. This is by far the most common problem.</p>
+          </div>
+          <div class="faq-item" id="connecting-a-tool-do-i-need-the-/v1-at-the-end">
+            <h3>Do I need the /v1 at the end?</h3>
+            <p>Almost always yes. Claude Code is the exception: it wants the bare address, because it appends the Anthropic path itself.</p>
+          </div>
+          <div class="faq-item" id="connecting-a-tool-why-does-the-model-list-in-my-tool-stay-empty">
+            <h3>Why does the model list in my tool stay empty?</h3>
+            <p>Most tools do not call <code>GET /v1/models</code>. They use whatever you type. Enter <code>multillm</code> or a real model id by hand.</p>
+          </div>
+          <div class="faq-item" id="connecting-a-tool-the-tool-cannot-find-localhost">
+            <h3>The tool cannot find localhost</h3>
+            <p>The tool runs somewhere else than the proxy. In a container, <code>localhost</code> is that container &mdash; use <code>host.docker.internal</code>. In a browser-based tool on another device, use your LAN address and switch on <strong>Expose to LAN</strong>.</p>
+          </div>
+          <div class="faq-item" id="connecting-a-tool-streaming-stops-mid-sentence">
+            <h3>Streaming stops mid-sentence</h3>
+            <p>Compare with streaming off. If it works, the tool does not handle the provider's keep-alive chunks. The workaround is to disable streaming for that tool.</p>
+          </div>
+          <div class="faq-item" id="connecting-a-tool-my-tool-asks-for-an-api-key-but-i-do-not-have-one">
+            <h3>My tool asks for an API key but I do not have one</h3>
+            <p>Any string works as a local key, but generate the real one in <strong>API &rsaquo; API Keys</strong>. A key with model and rate limits is better than one shared by every tool.</p>
+          </div>
+        </section>
+        <section class="doc-section" id="providers-and-models">
+          <h2>Providers and models</h2>
+          <div class="faq-item" id="providers-and-models-a-provider-shows-no-models">
+            <h3>A provider shows no models</h3>
+            <p>The key is wrong, the base URL does not match, or the provider is unreachable. Use the test button on the card &mdash; the dialog names the cause: HTTP 401 for a bad key, a timeout for an unreachable host.</p>
+          </div>
+          <div class="faq-item" id="providers-and-models-the-error-says-the-model-does-not-exist-or-is-not-enabled">
+            <h3>The error says the model does not exist or is not enabled</h3>
+            <p>The model is switched off in the provider editor, or the name is wrong. Each card shows <code>enabled / total</code>; having models configured and none enabled is a frequent cause.</p>
+          </div>
+          <div class="faq-item" id="providers-and-models-can-i-use-a-local-model-like-ollama">
+            <h3>Can I use a local model like Ollama?</h3>
+            <p>Yes, with no key at all. Add it with the base URL <code>http://localhost:11434/v1</code> and the OpenAI format. See <a href="guides.html#guide-local">local engines</a>.</p>
+          </div>
+          <div class="faq-item" id="providers-and-models-how-do-i-make-it-prefer-one-model">
+            <h3>How do I make it prefer one model?</h3>
+            <p>Star it. Under the <code>weighted</code> strategy a starred model is picked four times as often, which is a blunt but effective way to steer traffic.</p>
+          </div>
+          <div class="faq-item" id="providers-and-models-what-is-the-difference-between-a-model-and-a-virtual-model">
+            <h3>What is the difference between a model and a virtual model?</h3>
+            <p>A model is one real model at one provider. A virtual model is a named group of models plus a strategy, so asking for it asks the strategy which one to use. <code>multillm</code> is a virtual model that exists from the start.</p>
+          </div>
+          <div class="faq-item" id="providers-and-models-does-it-work-with-tool-calling">
+            <h3>Does it work with tool calling?</h3>
+            <p>Yes. The tool schema passes through and the calling convention is translated per provider. A parameter a provider does not understand is dropped rather than causing an error.</p>
+          </div>
+        </section>
+        <section class="doc-section" id="accounts-and-cost">
+          <h2>Accounts and cost</h2>
+          <div class="faq-item" id="accounts-and-cost-how-is-cost-calculated">
+            <h3>How is cost calculated?</h3>
+            <p>From the token counts providers report in their responses. When a provider reports nothing, the number is estimated and marked as such. Your provider's dashboard remains authoritative.</p>
+          </div>
+          <div class="faq-item" id="accounts-and-cost-can-i-set-a-spending-limit">
+            <h3>Can I set a spending limit?</h3>
+            <p>Yes, as a daily budget. The usage panel warns at 80 percent. It is a warning, not a cut-off &mdash; requests keep working.</p>
+          </div>
+          <div class="faq-item" id="accounts-and-cost-who-can-see-my-usage">
+            <h3>Who can see my usage?</h3>
+            <p>Only your own account, and the admin's user list. In the container each user has an isolated profile, so members cannot see each other's history.</p>
+          </div>
+          <div class="faq-item" id="accounts-and-cost-where-are-my-provider-keys-stored">
+            <h3>Where are my provider keys stored?</h3>
+            <p>In your user profile directory, on your machine. They are compared as hashes where a lookup happens, and never leave the machine except to authenticate to the provider.</p>
+          </div>
+        </section>
+        <section class="doc-section" id="docker-and-updates">
+          <h2>Docker and updates</h2>
+          <div class="faq-item" id="docker-and-updates-why-does-nothing-start-after-a-reboot">
+            <h3>Why does nothing start after a reboot?</h3>
+            <p>Because <code>restart: "no"</code> is set deliberately. A container that starts itself and stays unreachable is worse than one you start yourself. <code>docker compose start</code> when you need it.</p>
+          </div>
+          <div class="faq-item" id="docker-and-updates-can-i-reach-the-proxy-from-the-internet">
+            <h3>Can I reach the proxy from the internet?</h3>
+            <p>Not directly &mdash; there is no TLS. Put a reverse proxy with a certificate in front, and set <code>MULTI_LLM_COOKIE_SECURE=1</code>. See <a href="guides.html#guide-proxy">HTTPS reverse proxy</a>.</p>
+          </div>
+          <div class="faq-item" id="docker-and-updates-how-do-i-update">
+            <h3>How do I update?</h3>
+            <p>The app tells you a new version exists and stops there. Nothing is installed automatically. Download, install over the old version, restart.</p>
+          </div>
+          <div class="faq-item" id="docker-and-updates-does-the-update-check-phone-home">
+            <h3>Does the update check phone home?</h3>
+            <p>It fetches one small file from GitHub, so your IP address is visible to them. Switch it off under <strong>Settings &rsaquo; App</strong> to make no outbound request at all.</p>
+          </div>
+          <div class="faq-item" id="docker-and-updates-i-want-a-remote-team-to-use-this-what-is-the-minimum">
+            <h3>I want a remote team to use this. What is the minimum?</h3>
+            <p>Put it behind HTTPS, leave <code>MULTI_LLM_ALLOW_SIGNUP</code> unset once your accounts exist, and give each person their own key. The rest is in <a href="docker.html#docker-security">security</a>.</p>
+          </div>
+        </section>
+        <nav class="doc-pager">
+          <a href="docker.html"><span class="dp-dir">Previous</span><span class="dp-title">…</span></a>
+          <a class="dp-next" href="docs.html"><span class="dp-dir">Next</span><span class="dp-title">…</span></a>
+        </nav>
+      </article>
+    </div>
+  </main>
+
+  <footer class="sitefoot" id="footer-slot"></footer>
+  <div class="consent hidden" id="consent-banner" role="region" aria-label="Privacy settings"><div id="consent-slot"></div></div>
+
+  <script src="docs-common.js"></script>
+  <script>
+    (function () {
+      var P = window.DOC_PAGES;
+      var cur = "faq";
+      var i = P.findIndex(function (p) { return p.key === cur; });
+      var prev = P[i - 1], next = P[i + 1];
+      var p = document.querySelector(".doc-pager a:not(.dp-next) .dp-title");
+      var n = document.querySelector(".doc-pager .dp-next .dp-title");
+      if (p && prev) { p.textContent = prev.title; }
+      if (n && next) { n.textContent = next.title; }
+      else if (n) { n.parentElement.style.display = "none"; }
+      else if (n) { n.parentElement.style.display = "none"; }
+    })();
+  </script>
+</body>
+</html>

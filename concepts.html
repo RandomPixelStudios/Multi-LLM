@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="How a request flows through the proxy, what the compatibility limits are, and what the routing settings actually do." />
+  <title>Concepts – Multi LLM</title>
+  <link rel="icon" type="image/png" href="assets/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="docs.css?v=7" />
+  <script>try{var p=JSON.parse(localStorage.getItem("ml-prefs"));if(p&&p.theme==="light"){document.documentElement.setAttribute("data-theme","light");}}catch(e){}</script>
+</head>
+<body class="docs-page" data-page="concepts">
+  <header class="topbar" id="topbar-slot"></header>
+
+  <main class="docs-page">
+    <div class="docs-shell">
+      <aside class="docs-left">
+        <div class="doc-search-wrap">
+          <span class="search-icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+          <input id="doc-search" class="doc-search" type="search" placeholder="Search the docs…" autocomplete="off" spellcheck="false" aria-label="Search documentation" />
+          <div class="search-results hidden" id="search-results"></div>
+        </div>
+        <nav class="toc" aria-label="On this page">
+          <div class="toc-group">
+            <h5>How it works</h5>
+            <a href="#concepts-flow" class="toc-sub">How a request flows</a>
+            <a href="#concepts-compat" class="toc-sub">OpenAI compatibility</a>
+            <a href="#concepts-streaming" class="toc-sub">Streaming</a>
+            <a href="#concepts-tokens" class="toc-sub">Tokens and context</a>
+            <a href="#concepts-quality" class="toc-sub">Quality signals</a>
+            <a href="#concepts-routing" class="toc-sub">Why routing matters</a>
+            <a href="#concepts-privacy" class="toc-sub">What stays where</a>
+          </div>
+          <div class="toc-group">
+            <h5>Reference</h5>
+            <a href="#glossary" class="toc-sub">Glossary</a>
+          </div>
+          <div class="toc-group">
+            <h5>Pages</h5>
+            <div id="page-list"></div>
+          </div>
+        </nav>
+      </aside>
+
+      <article class="doc-main">
+        <span class="doc-eyebrow">Understand</span>
+        <h1>Concepts</h1>
+        <p class="doc-lede">How a request flows through the proxy, what the compatibility limits are, and what the routing settings actually do.</p>
+
+        <section class="doc-section" id="concepts-flow">
+          <h2>How a request flows</h2>
+          <p>Multi LLM sits between your tool and the provider. Nothing leaves your
+            machine except the request itself, and only to the provider you
+            selected.</p>
+
+          <ol class="steps">
+            <li>
+              <h4>Your tool sends a request</h4>
+              <p>Standard OpenAI shape, to <code>http://localhost:5000/v1/chat/completions</code>
+                with your local key. From Multi LLM's point of view it looks the same
+                as any other client.</p>
+            </li>
+            <li>
+              <h4>The model name is resolved</h4>
+              <p>If it is a real model id, that model is used. If it is a virtual
+                model such as <code>multillm</code>, the routing strategy picks a
+                concrete one from its bundle.</p>
+            </li>
+            <li>
+              <h4>Health and circuit breakers are checked</h4>
+              <p>Providers with an open circuit breaker are skipped. If the chosen
+                provider fails, the request fails over to the next candidate until the
+                failover budget runs out.</p>
+            </li>
+            <li>
+              <h4>The prompt is compressed</h4>
+              <p>If token compression is on, filler is removed before the request goes
+                out. Code blocks, JSON and fenced sections are never touched &mdash;
+                see <a href="configuration.html#config-compression">compression</a>.</p>
+            </li>
+            <li>
+              <h4>The request is translated</h4>
+              <p>OpenAI shape becomes whatever the target provider speaks &mdash; Anthropic
+                messages, Gemini contents, and so on. The reverse happens on the way
+                back.</p>
+            </li>
+            <li>
+              <h4>The response is measured</h4>
+              <p>Tokens, latency and success land in the usage panel. A cache hit costs
+                nothing and is not forwarded.</p>
+            </li>
+          </ol>
+
+          <div class="callout">
+            <span class="callout-title">Your provider key never leaves</span>
+            <p>Multi LLM holds the key, uses it for the upstream call, and returns only
+              the model's answer. The tool never sees it.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="concepts-compat">
+          <h2>OpenAI compatibility</h2>
+          <p>Multi LLM relays the standard OpenAI surfaces. Anything outside that list
+            is refused rather than passed through blindly, so a typo cannot turn into
+            an unexpected request to a provider.</p>
+
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>Endpoint</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><code>POST /v1/chat/completions</code></td><td>Chat, the common case</td></tr>
+                <tr><td><code>POST /v1/completions</code></td><td>Legacy text completion</td></tr>
+                <tr><td><code>POST /v1/responses</code></td><td>OpenAI Responses API</td></tr>
+                <tr><td><code>POST /v1/embeddings</code></td><td>Embeddings</td></tr>
+                <tr><td><code>POST /v1/moderations</code></td><td>Content moderation</td></tr>
+                <tr><td><code>GET /v1/models</code></td><td>List enabled models</td></tr>
+                <tr><td><code>POST /v1/images/*</code></td><td>Image endpoints, relayed</td></tr>
+                <tr><td><code>POST /v1/audio/*</code></td><td>Audio endpoints, relayed</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Format translation</h3>
+          <p>Your tool only ever speaks OpenAI. Multi LLM converts to the target
+            provider's own shape and back. That is why an Anthropic model appears to
+            a VS Code extension like any other model.</p>
+          <p>Two consequences worth knowing:</p>
+          <ul>
+            <li><strong>Provider-specific parameters pass through only where they
+              exist.</strong> A parameter Anthropic does not understand is dropped
+              rather than causing an error.</li>
+            <li><strong>Tool calling is translated per provider.</strong> The tool
+              schema is kept intact; the calling convention differs and is converted
+              for you.</li>
+          </ul>
+
+          <h3>What is not supported</h3>
+          <ul>
+            <li>Fine-tuned model management &mdash; configure those at the provider.</li>
+            <li>Batch endpoints, which run jobs asynchronously upstream.</li>
+            <li>Anything not in the table above.</li>
+          </ul>
+          <p>Unknown paths return <code>404</code> with a message naming the refused
+            path, rather than being forwarded somewhere unexpected.</p>
+        </section>
+
+        <section class="doc-section" id="concepts-streaming">
+          <h2>Streaming</h2>
+          <p>Set <code>"stream": true</code> and the answer arrives token by token. The
+            chunk format is the OpenAI one, whatever the provider actually does
+            internally.</p>
+
+          <h3>What changes between providers</h3>
+          <p>Streaming is where provider differences show up most, because every
+            provider invented its own event shape:</p>
+          <ul>
+            <li>OpenAI-style providers emit incremental <code>delta</code> chunks.</li>
+            <li>Anthropic emits typed events and content blocks that get built up
+              rather than appended.</li>
+            <li>Some providers send keep-alive or usage-only chunks with no content.</li>
+          </ul>
+          <p>Multi LLM normalises all of that into one stream your tool can read. The
+            cost is a small delay on the first token for providers that do not stream
+            natively &mdash; the proxy buffers until it has something to send.</p>
+
+          <div class="callout warn">
+            <span class="callout-title">If a stream cuts off mid-sentence</span>
+            <p>Compare with streaming disabled. If it works that way, the tool does not
+              handle the provider's keep-alive chunks. Report it with the provider name
+              &mdash; the workaround is to turn streaming off for that tool.</p>
+          </div>
+
+          <h3>Streaming and the cache</h3>
+          <p>Only non-streaming requests are cached. Streaming is a one-shot
+            interaction, and replaying a recorded stream would look like a
+            hang.</p>
+        </section>
+
+        <section class="doc-section" id="concepts-tokens">
+          <h2>Tokens and context</h2>
+          <h3>Prompt tokens</h3>
+          <p>Everything in <code>messages</code> counts: system prompts, history, tool
+            definitions and the current user message. A long conversation grows the
+            prompt every turn, which is usually where the cost goes.</p>
+
+          <h3>Completion tokens</h3>
+          <p>What the model generated. Controlled by <code>max_tokens</code> and
+            <code>temperature</code> &mdash; a high maximum does not cost more if the
+            model stops early.</p>
+
+          <h3>Context length</h3>
+          <p>Each model has a limit, shown in the model card as
+            <code>128K</code> and similar. Exceeding it returns a provider error; the
+            proxy does not silently truncate, because a truncated conversation
+            produces a wrong answer that looks like a working one.</p>
+
+          <h3>Where the numbers come from</h3>
+          <p>Providers report usage in the response, and Multi LLM records that. When a
+            provider returns nothing, the count is <em>estimated</em> and marked as
+            such in the usage panel. Estimated numbers are close but not billing
+            numbers &mdash; your provider's dashboard is authoritative.</p>
+
+          <div class="callout">
+            <span class="callout-title">Cost control</span>
+            <p>Two levers do most of the work: token compression shrinks the prompt
+              before it leaves, and the usage ranking shows which model or provider
+              actually costs you. See
+              <a href="guides.html#guide-costs">cutting token costs</a>.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="concepts-quality">
+          <h2>Quality signals</h2>
+          <p>Multi LLM measures latency and availability, and it shows both per
+            provider. It cannot tell you which model is <em>better</em> &mdash; that
+            depends entirely on your task.</p>
+
+          <h3>The health dot</h3>
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>Dot</th><th>Meaning</th></tr></thead>
+              <tbody>
+                <tr><td>Green</td><td>Probed within the last 15 minutes, responding</td></tr>
+                <tr><td>Yellow</td><td>No recent probe, or never checked &mdash; the last known state, possibly stale</td></tr>
+                <tr><td>Red</td><td>Failing, or the circuit breaker is open</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Probes run against the provider's own model list. They are cheap and
+            periodic, not on every request.</p>
+
+          <h3>Latency</h3>
+          <p>Measured in milliseconds per request, averaged over a rolling window.
+            It is the metric the <code>latency</code> and <code>fastest</code> routing
+            strategies pick on. Averages hide outliers; the strategies work on the
+            average, so a provider with occasional very slow calls can still be
+            chosen.</p>
+
+          <h3>Choosing a strategy</h3>
+          <p>If you do not know where to start:</p>
+          <ul>
+            <li><strong>weighted</strong> is the default and a reasonable choice. Starred
+              models get picked four times as often, so you can steer it by starring.</li>
+            <li><strong>fastest</strong> if you care about response time more than
+              consistent quality.</li>
+            <li><strong>priority</strong> if you have a clear favourite provider and want
+              it first, with the rest as fallback.</li>
+            <li><strong>sticky</strong> for multi-turn work: the same conversation stays
+              on one model, which usually reads better.</li>
+          </ul>
+        </section>
+
+        <section class="doc-section" id="concepts-routing">
+          <h2>Why routing matters</h2>
+          <p>A single model name per request means you commit to one provider for
+            every task. Routing turns that into a bundle that adapts.</p>
+
+          <h3>Virtual models</h3>
+          <p>A virtual model is a named group of real models plus a strategy. Asking for
+            <code>multillm</code> asks the strategy, not a specific provider.</p>
+          <p>Two things fall out of this. Failover happens without you noticing,
+            because a failing provider is simply not chosen. And you can change
+            strategy later without changing a single line in your tool.</p>
+
+          <h3>Starred models</h3>
+          <p>Starring a model multiplies its selection weight by four under
+            <code>weighted</code>. It is a blunt instrument for steering traffic
+            towards what works, not a ranking.</p>
+
+          <h3>The built-in bundle</h3>
+          <p><code>multillm</code> exists from the first start. It contains every enabled
+            model and uses <code>weighted</code>. You can edit it, rename it, or make
+            your own &mdash; see
+            <a href="configuration.html#config-virtual">virtual models</a>.</p>
+        </section>
+
+        <section class="doc-section" id="concepts-privacy">
+          <h2>What stays where</h2>
+          <p>Worth being precise about, since the whole point of a local proxy is that
+            data does not travel.</p>
+
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>What</th><th>Where it goes</th></tr></thead>
+              <tbody>
+                <tr><td>Your prompts and the model's answers</td><td>To the provider you chose, and nowhere else</td></tr>
+                <tr><td>Provider API keys</td><td>Your local profile, compared as hashes, never sent to a tool</td></tr>
+                <tr><td>Usage history</td><td>Your local profile, per user</td></tr>
+                <tr><td>Your tool's local key</td><td>Stays between the tool and the proxy; the proxy never logs it</td></tr>
+                <tr><td>Update check</td><td>One request to GitHub for a version file, no identifying data</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>Multi LLM has no account, no telemetry and no analytics. The only network
+            traffic is your request to the provider, and the optional update check you
+            can switch off in <strong>Settings &rsaquo; App</strong>.</p>
+
+          <div class="callout ok">
+            <span class="callout-title">Full detail</span>
+            <p>Privacy and terms in the app under <strong>Settings &rsaquo; About &amp;
+              legal</strong>, and online on the
+              <a href="legal.html#privacy">privacy page</a>.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="glossary">
+          <h2>Glossary</h2>
+          <div class="deflist">
+            <div class="defrow">
+              <dt>Provider</dt>
+              <dd>One configured service with a base URL, a key and a list of models.
+                OpenAI, Anthropic, Ollama and 90 others are all providers.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Virtual model</dt>
+              <dd>A named bundle of real models plus a routing strategy. Asking for it
+                asks the strategy which model to use.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Routing strategy</dt>
+              <dd>The rule that picks a model from a bundle: weighted, round_robin,
+                priority, latency, fastest or sticky.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Health check</dt>
+              <dd>A periodic probe against a provider to see whether it answers. Produces
+                the coloured dot on the provider card.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Circuit breaker</dt>
+              <dd>After repeated failures a provider is taken out of rotation for a
+                cooldown, then probed back in. Prevents every request from retrying a
+                provider that is down.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Failover</dt>
+              <dd>Retrying a failed request on the next candidate model instead of
+                returning the error. Bounded by a budget so it cannot loop.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Token compression</dt>
+              <dd>Removing filler words from a prompt before sending it. Never touches
+                code, JSON or fenced blocks.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Response cache</dt>
+              <dd>Serving an identical non-streaming request from a local store instead
+                of forwarding it. Bounded size and time-to-live.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Local key</dt>
+              <dd>The key your tool uses to talk to Multi LLM. Unrelated to provider
+                keys and never passed on.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Expose to LAN</dt>
+              <dd>Listening on all interfaces instead of localhost only, so other
+                machines can reach the proxy. Not for untrusted networks.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Token</dt>
+              <dd>The unit providers bill by. Roughly four characters of English, but
+                the exact rule is the provider's.</dd>
+            </div>
+          </div>
+        </section>
+
+        <nav class="doc-pager">
+          <a href="connect.html"><span class="dp-dir">Previous</span><span class="dp-title">…</span></a>
+          <a class="dp-next" href="configuration.html"><span class="dp-dir">Next</span><span class="dp-title">…</span></a>
+        </nav>
+      </article>
+    </div>
+  </main>
+
+  <footer class="sitefoot" id="footer-slot"></footer>
+  <div class="consent hidden" id="consent-banner" role="region" aria-label="Privacy settings"><div id="consent-slot"></div></div>
+
+  <script src="docs-common.js"></script>
+  <script>
+    (function () {
+      var P = window.DOC_PAGES;
+      var cur = "concepts";
+      var i = P.findIndex(function (p) { return p.key === cur; });
+      var prev = P[i - 1], next = P[i + 1];
+      var p = document.querySelector(".doc-pager a:not(.dp-next) .dp-title");
+      var n = document.querySelector(".doc-pager .dp-next .dp-title");
+      if (p && prev) { p.textContent = prev.title; }
+      if (n && next) { n.textContent = next.title; }
+    })();
+  </script>
+</body>
+</html>

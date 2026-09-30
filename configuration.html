@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Every setting in the app: what it changes, what it costs, and when to leave it alone." />
+  <title>Configuration – Multi LLM</title>
+  <link rel="icon" type="image/png" href="assets/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="docs.css?v=7" />
+  <script>try{var p=JSON.parse(localStorage.getItem("ml-prefs"));if(p&&p.theme==="light"){document.documentElement.setAttribute("data-theme","light");}}catch(e){}</script>
+</head>
+<body class="docs-page" data-page="config">
+  <header class="topbar" id="topbar-slot"></header>
+
+  <main class="docs-page">
+    <div class="docs-shell">
+      <aside class="docs-left">
+        <div class="doc-search-wrap">
+          <span class="search-icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+          <input id="doc-search" class="doc-search" type="search" placeholder="Search the docs…" autocomplete="off" spellcheck="false" aria-label="Search documentation" />
+          <div class="search-results hidden" id="search-results"></div>
+        </div>
+        <nav class="toc" aria-label="On this page">
+          <div class="toc-group">
+            <h5>API</h5>
+            <a href="#config-api" class="toc-sub">Endpoint, port and key</a>
+            <a href="#config-expose" class="toc-sub">Reaching it from other machines</a>
+          </div>
+          <div class="toc-group">
+            <h5>Traffic</h5>
+            <a href="#config-providers" class="toc-sub">Providers and health</a>
+            <a href="#config-virtual" class="toc-sub">Virtual models</a>
+            <a href="#config-routing" class="toc-sub">Routing strategies</a>
+            <a href="#config-reliability" class="toc-sub">Reliability and failover</a>
+            <a href="#config-compression" class="toc-sub">Token compression</a>
+            <a href="#config-cache" class="toc-sub">Response cache</a>
+          </div>
+          <div class="toc-group">
+            <h5>Application</h5>
+            <a href="#config-app" class="toc-sub">Startup and updates</a>
+            <a href="#config-data" class="toc-sub">Data, export and import</a>
+            <a href="#config-legal" class="toc-sub">Legal texts</a>
+          </div>
+          <div class="toc-group">
+            <h5>Pages</h5>
+            <div id="page-list"></div>
+          </div>
+        </nav>
+      </aside>
+
+      <article class="doc-main">
+        <span class="doc-eyebrow">Settings</span>
+        <h1>Configuration</h1>
+        <p class="doc-lede">Every setting in the app: what it changes, what it costs, and when to leave it alone.</p>
+
+        <section class="doc-section" id="config-api">
+          <h2>Endpoint, port and key</h2>
+          <p>The API panel holds the values every tool needs. Changes save
+            automatically; there is no save button.</p>
+
+          <h3>Base URL and port</h3>
+          <p>The proxy listens on <code>5000</code> by default. Change the port and
+            every tool that points at <code>localhost:5000</code> has to follow.
+            Pick something above 1024 to avoid privileged ports.</p>
+          <div class="doc-code">http://localhost:5000/v1</div>
+          <p>The API tab shows the full URL, ready to copy.</p>
+
+          <h3>Enabled</h3>
+          <p>Turns the HTTP server off without closing the window. Nothing is
+            reachable while it is off &mdash; useful if you only want the UI
+            open.</p>
+
+          <h3>API key</h3>
+          <p>Your local key, shown in the API tab. It authenticates a tool to
+            <em>your</em> proxy. Double-click to generate a new one; the old key stops
+            working immediately.</p>
+          <p>An <strong>extra key</strong> limits which models and how many requests
+            per minute a given tool may use. Give a shared tool its own key rather than
+            handing out the main one.</p>
+
+          <h3>All models</h3>
+          <p>Whether <code>GET /v1/models</code> lists models that are configured but
+            switched off. Leave it on so tools can discover what exists; turn it off
+            to hide models a tool should not reach.</p>
+
+          <h3>Client config snippets</h3>
+          <p>Opens ready-to-copy configuration for curl, Node, Go, PowerShell, Bash,
+            Python, Java and jq, pre-filled with your URL, key and port. This is the
+            fastest way to wire up something without a dedicated page.</p>
+        </section>
+
+        <section class="doc-section" id="config-expose">
+          <h2>Reaching it from other machines</h2>
+          <p>By default the proxy only accepts connections from the same machine.
+            That is the right setting for a laptop.</p>
+
+          <h3>Expose to LAN</h3>
+          <p>Listens on all interfaces, so other devices on the network can connect.
+            The API tab then shows a URL with your machine's LAN address.</p>
+
+          <div class="callout danger">
+            <span class="callout-title">Only do this on a network you trust</span>
+            <p>Anyone on the network who has your local key can use your provider keys
+              and spend your money. On Wi-Fi in a café, a hotel, or any shared
+              network, leave this off and use a tunnel instead.</p>
+          </div>
+
+          <h3>The Windows firewall prompt</h3>
+          <p>The first time you switch it on, Windows asks for permission to open the
+            port. Declining leaves the proxy unreachable from other machines, which
+            looks like a network problem but is a local one.</p>
+
+          <h3>From a container</h3>
+          <p>Inside Docker, <code>localhost</code> is the container itself. Use
+            <code>host.docker.internal</code> and enable Expose to LAN. See
+            <a href="docker.html#docker-lan">Docker and the network</a>.</p>
+        </section>
+
+        <section class="doc-section" id="config-providers">
+          <h2>Providers and health</h2>
+
+          <h3>Adding a provider</h3>
+          <p><strong>Providers &rsaquo; Add provider</strong> opens a picker with every
+            supported service. Pick one, paste the key from that provider's own
+            dashboard, and the model list is fetched for you.</p>
+          <p>A local engine such as Ollama needs no key: give it the base URL
+            (<code>http://localhost:11434/v1</code>) and leave the key empty.</p>
+
+          <h3>Enable counts</h3>
+          <p>Each card shows <code>enabled / total models</code>. A model only receives
+            requests when it is enabled. Having four models configured and none
+            enabled is a common cause of "no models" errors.</p>
+
+          <h3>The health dot</h3>
+          <p>Green means a probe succeeded recently, yellow means no recent probe,
+            red means failing or the breaker is open. Click the dot's reset button to
+            close a breaker by hand after fixing a problem.</p>
+
+          <h3>Testing a provider</h3>
+          <p>The test button on each card sends a real request. The result dialog
+            names the cause when it fails: HTTP 401 for a bad key, a timeout for an
+            unreachable host, a parse error for a wrong base URL.</p>
+
+          <h3>Format</h3>
+          <p>Most providers are OpenAI-compatible and need no change. Anthropic,
+            Gemini and a few others have their own request shape &mdash; the provider
+            preset sets this, and the picker fills it in.</p>
+
+          <div class="callout">
+            <span class="callout-title">Editing a provider id</span>
+            <p>Renaming a provider breaks the models bundled into virtual models that
+              reference it. Use a new provider instead of renaming when something is
+              already in use.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="config-virtual">
+          <h2>Virtual models</h2>
+          <p>A virtual model is a named group of real models plus a strategy. Requesting
+            the group asks the strategy which member to use.</p>
+
+          <h3>The built-in bundle</h3>
+          <p><code>multillm</code> exists from the first start, contains every enabled
+            model and uses <code>weighted</code>. Editing it changes what
+            <code>multillm</code> means for every tool that uses it.</p>
+
+          <h3>Creating your own</h3>
+          <p><strong>Virtual Models &rsaquo; Create</strong> opens a dialog: a name, a
+            strategy, and a checkbox list of the models to include. The name is what
+            tools will request.</p>
+
+          <div class="callout warn">
+            <span class="callout-title">A bundle can only pick from its members</span>
+            <p>Disabling a model removes it from every bundle that contains it. If a
+              tool then reports that a model does not exist, check whether it was
+              switched off rather than deleted.</p>
+          </div>
+
+          <h3>Aliases</h3>
+          <p>A model can carry an alias, shown in the models list. Useful when two
+            providers use the same model name and a tool needs to target one
+            specifically &mdash; aliases get an <code>o-</code> prefix.</p>
+
+          <h3>Useful bundles</h3>
+          <div class="card-grid">
+            <a class="doc-card" href="guides.html#guide-recipes">
+              <h3>Recipes</h3>
+              <p>Four bundles worth copying: fast, cheap, private and balanced.</p>
+            </a>
+            <a class="doc-card" href="guides.html#guide-tiers">
+              <h3>Bundle tiers</h3>
+              <p>Organising models into quality tiers and pointing one bundle at
+                each.</p>
+            </a>
+            <a class="doc-card" href="guides.html#guide-sharing">
+              <h3>Sharing bundles</h3>
+              <p>Copying a bundle into a team setup via export and import.</p>
+            </a>
+          </div>
+        </section>
+
+        <section class="doc-section" id="config-routing">
+          <h2>Routing strategies</h2>
+          <p>Set per virtual model. This is the strategy the bundle uses to pick.</p>
+
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>Strategy</th><th>Picks</th><th>Use when</th></tr></thead>
+              <tbody>
+                <tr><td>Weighted</td><td>At random, starred models four times as often</td><td>Default. Steer by starring.</td></tr>
+                <tr><td>Round robin</td><td>Even rotation, no randomness</td><td>You want every model used equally.</td></tr>
+                <tr><td>Priority</td><td>First healthy model in provider order</td><td>You have a clear favourite.</td></tr>
+                <tr><td>Latency</td><td>Lowest average response time</td><td>Speed matters more than consistency.</td></tr>
+                <tr><td>Fastest</td><td>Latency weighted by current health</td><td>Speed, but avoids a flaky provider.</td></tr>
+                <tr><td>Sticky</td><td>The same model for a whole conversation</td><td>Multi-turn work; reads better.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout">
+            <span class="callout-title">Sticky needs a conversation id</span>
+            <p>It keys on the conversation your tool sends. A tool that starts a fresh
+              context every request gets no benefit &mdash; which is most tools by
+              default. It becomes useful once your tool keeps history.</p>
+          </div>
+
+          <p>Change a strategy at any time; it takes effect on the next request.
+            Existing conversations are unaffected unless the strategy is sticky.</p>
+        </section>
+
+        <section class="doc-section" id="config-reliability">
+          <h2>Reliability and failover</h2>
+
+          <h3>Circuit breaker</h3>
+          <p>After a set number of consecutive failures a provider is taken out of
+            rotation for a cooldown period, then probed back in. This stops every
+            single request from retrying a provider that is down.</p>
+          <p>When the breaker opens, the routing simply skips that provider. A request
+            that would have failed takes a moment longer and succeeds instead.</p>
+
+          <h3>Health history</h3>
+          <p>Multi LLM keeps a short history of probe results per provider, shown on
+            the card. It refreshes at most once a minute, so the numbers do not flicker
+            while you watch.</p>
+
+          <h3>Failover budget</h3>
+          <p>How many alternative models a single request may try before giving up.
+            Zero means no failover: the first error reaches you.</p>
+          <p>A budget exists so a request cannot loop forever when every candidate is
+            broken. Two is usually enough: your favourite plus one fallback.</p>
+
+          <h3>Daily budget</h3>
+          <p>Set a spend limit and the usage panel warns at 80 percent. It is a
+            warning, not a cut-off &mdash; requests keep working.</p>
+        </section>
+
+        <section class="doc-section" id="config-compression">
+          <h2>Token compression</h2>
+          <p>Removes filler from your prompt before it leaves the machine. Providers
+            bill by token, and long instructions carry a lot of words that change
+            nothing.</p>
+
+          <h3>Strength</h3>
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>Level</th><th>Effect</th></tr></thead>
+              <tbody>
+                <tr><td>1&ndash;3</td><td>Mild. Only obvious filler: "please", "I would like to".</td></tr>
+                <tr><td>4&ndash;6</td><td>Noticeable savings on chatty prompts.</td></tr>
+                <tr><td>7&ndash;10</td><td>Aggressive. Test before relying on it.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>What is never touched</h3>
+          <ul>
+            <li>Code blocks, including fenced sections</li>
+            <li>JSON, in any form</li>
+            <li>Anything that looks like a literal or an identifier</li>
+            <li>The system prompt's role markers</li>
+          </ul>
+          <p>These are exactly the parts where a "harmless" rewrite changes meaning.
+            The compressor skips them rather than risking your code.</p>
+
+          <div class="callout warn">
+            <span class="callout-title">Compression is for prose</span>
+            <p>It helps when you paste long explanations and hurts nothing. It cannot
+              make a big codebase smaller &mdash; code is excluded on purpose.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="config-cache">
+          <h2>Response cache</h2>
+          <p>Identical non-streaming requests are answered from a local store instead
+            of being forwarded. Same prompt, same model, same parameters means the same
+            answer anyway.</p>
+
+          <div class="deflist">
+            <div class="defrow">
+              <dt>What is cached</dt>
+              <dd>Non-streaming chat and completion requests. Streaming is never
+                cached &mdash; replaying a recorded stream looks like a hang.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Time to live</dt>
+              <dd>How long an entry stays valid. Short is safer: models change behind
+                the same name.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Max entries</dt>
+              <dd>Upper bound on stored responses, oldest evicted first. Keeps memory
+                use predictable.</dd>
+            </div>
+          </div>
+
+          <div class="callout">
+            <span class="callout-title">Good for repetition, wrong for freshness</span>
+            <p>Use it for fixed instructions you send repeatedly. Do not use it for
+              anything where a stale answer is wrong &mdash; a lookup, a current price,
+              a question about a file you just changed.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="config-app">
+          <h2>Startup and updates</h2>
+
+          <h3>Start with Windows</h3>
+          <p>Launches the proxy when you sign in, so tools work before you open the
+            window. Windows only; on Linux use your desktop session's autostart.</p>
+
+          <h3>Check for updates automatically</h3>
+          <p>On start-up, the app fetches a small version file. That request reaches
+            GitHub, so your IP address is visible to them. Switch it off to make no
+            outbound request at all; the manual check stays available.</p>
+
+          <h3>Check for updates</h3>
+          <p>Checks once, on demand, and shows the result. Nothing is downloaded
+            automatically &mdash; if a newer version exists, you get a link.</p>
+
+          <h3>Update server</h3>
+          <p>Where the version file is fetched from. Empty means the official one.
+            Change it if you run your own fork with its own release cycle.</p>
+
+          <div class="callout">
+            <span class="callout-title">Updates are never automatic</span>
+            <p>Multi LLM tells you a new version exists and stops there. You download
+              and install it yourself, which keeps a beta from changing under you
+              mid-session.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="config-data">
+          <h2>Data, export and import</h2>
+
+          <h3>Export config</h3>
+          <p>Writes your providers, models and settings to a JSON file. A checkbox
+            decides whether API keys go in.</p>
+          <div class="callout danger">
+            <span class="callout-title">Keys are secrets</span>
+            <p>A config exported <em>with</em> keys is a plain text file containing your
+              provider credentials. Export without them unless the destination is
+              somewhere you fully control.</p>
+          </div>
+
+          <h3>Import config</h3>
+          <p>Merges a previously exported file. Existing entries with the same name
+            are updated rather than duplicated, so importing an older file can roll
+            your configuration back.</p>
+
+          <h3>Export usage</h3>
+          <p>Your token history as JSON, for your own accounting. Contains no keys.</p>
+
+          <h3>Where files live</h3>
+          <p>Everything is in your user profile directory: settings, keys, usage and
+            accounts, one folder per user. See
+            <a href="guides.html\#guide-backup">backup</a> for copying it.</p>
+        </section>
+
+        <section class="doc-section" id="config-legal">
+          <h2>Legal texts</h2>
+          <p>Imprint, privacy policy and terms are available in the app under
+            <strong>Settings &rsaquo; About &amp; legal</strong>, with three tabs to
+            switch between them.</p>
+          <p>The same texts are online on the
+            <a href="legal.html">legal page</a>. They cover what the app stores, what
+            leaves your machine, and where the liability boundaries are.</p>
+
+          <div class="callout">
+            <span class="callout-title">Read the compatibility clause before deploying</span>
+            <p>Section 5 limits liability for compatibility and environment failures
+              &mdash; OS updates, missing libraries, firewalls, occupied ports. Worth
+              knowing before you run this on someone else's machine.</p>
+          </div>
+        </section>
+
+        <nav class="doc-pager">
+          <a href="concepts.html"><span class="dp-dir">Previous</span><span class="dp-title">…</span></a>
+          <a class="dp-next" href="guides.html"><span class="dp-dir">Next</span><span class="dp-title">…</span></a>
+        </nav>
+      </article>
+    </div>
+  </main>
+
+  <footer class="sitefoot" id="footer-slot"></footer>
+  <div class="consent hidden" id="consent-banner" role="region" aria-label="Privacy settings"><div id="consent-slot"></div></div>
+
+  <script src="docs-common.js"></script>
+  <script>
+    (function () {
+      var P = window.DOC_PAGES;
+      var cur = "config";
+      var i = P.findIndex(function (p) { return p.key === cur; });
+      var prev = P[i - 1], next = P[i + 1];
+      var p = document.querySelector(".doc-pager a:not(.dp-next) .dp-title");
+      var n = document.querySelector(".doc-pager .dp-next .dp-title");
+      if (p && prev) { p.textContent = prev.title; }
+      if (n && next) { n.textContent = next.title; }
+    })();
+  </script>
+</body>
+</html>

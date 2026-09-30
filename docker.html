@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Run Multi LLM in a container in multi-user mode: setup, network, backup and hardening." />
+  <title>Docker – Multi LLM</title>
+  <link rel="icon" type="image/png" href="assets/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="docs.css?v=7" />
+  <script>try{var p=JSON.parse(localStorage.getItem("ml-prefs"));if(p&&p.theme==="light"){document.documentElement.setAttribute("data-theme","light");}}catch(e){}</script>
+</head>
+<body class="docs-page" data-page="docker">
+  <header class="topbar" id="topbar-slot"></header>
+
+  <main class="docs-page">
+    <div class="docs-shell">
+      <aside class="docs-left">
+        <div class="doc-search-wrap">
+          <span class="search-icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+          <input id="doc-search" class="doc-search" type="search" placeholder="Search the docs…" autocomplete="off" spellcheck="false" aria-label="Search documentation" />
+          <div class="search-results hidden" id="search-results"></div>
+        </div>
+        <nav class="toc" aria-label="On this page">
+          <div class="toc-group">
+            <h5>Setup</h5>
+            <a href="#docker-why" class="toc-sub">Why the container</a>
+            <a href="#docker-prereq" class="toc-sub">Prerequisites</a>
+            <a href="#docker-quick" class="toc-sub">Quick start</a>
+            <a href="#docker-compose" class="toc-sub">The compose file</a>
+          </div>
+          <div class="toc-group">
+            <h5>Running</h5>
+            <a href="#docker-users" class="toc-sub">Users and keys</a>
+            <a href="#docker-env" class="toc-sub">Environment variables</a>
+            <a href="#docker-data" class="toc-sub">Data and volumes</a>
+            <a href="#docker-update" class="toc-sub">Updating</a>
+          </div>
+          <div class="toc-group">
+            <h5>Operations</h5>
+            <a href="#docker-commands" class="toc-sub">Command reference</a>
+            <a href="#docker-logs" class="toc-sub">Logs and troubleshooting</a>
+            <a href="#docker-lan" class="toc-sub">Network and firewall</a>
+            <a href="#docker-backup" class="toc-sub">Backup and restore</a>
+            <a href="#docker-security" class="toc-sub">Security</a>
+            <a href="#docker-limits" class="toc-sub">Limits</a>
+          </div>
+          <div class="toc-group">
+            <h5>Pages</h5>
+            <div id="page-list"></div>
+          </div>
+        </nav>
+      </aside>
+
+      <article class="doc-main">
+        <span class="doc-eyebrow">Container</span>
+        <h1>Docker</h1>
+        <p class="doc-lede">Run Multi LLM in a container in multi-user mode: setup, network, backup and hardening.</p>
+
+        <section class="doc-section" id="docker-why">
+          <h2>Why the container</h2>
+          <p>The desktop app is one user on one machine. The container runs the same
+            software in <strong>multi-user mode</strong>: one port, several accounts,
+            each with its own providers, models, keys, usage history and personal
+            port.</p>
+
+          <h3>When to use it</h3>
+          <ul>
+            <li>A team, especially one that is not all in the same room.</li>
+            <li>A server you want running whether or not someone is logged in.</li>
+            <li>Any setup where you would otherwise hand around one provider key.</li>
+          </ul>
+
+          <h3>What it does not have</h3>
+          <p>No desktop window. The tray icon needs a desktop session. Everything is
+            managed through the web interface at
+            <code>http://localhost:5000</code>.</p>
+
+          <div class="callout">
+            <span class="callout-title">A desktop app still exists</span>
+            <p>The container is one deployment option, not a replacement. Most solo
+              users never need it.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="docker-prereq">
+          <h2>Prerequisites</h2>
+          <ul>
+            <li><strong>Docker Engine</strong> with the Compose plugin. Nothing else:
+              no Node, no Rust, no compilers.</li>
+            <li>The repository, because the image is built from source.</li>
+            <li>Host port <strong>5000</strong> free.</li>
+            <li>A provider key, or a local engine reachable from the container.</li>
+          </ul>
+
+          <h3>Check your setup</h3>
+          <div class="doc-code">docker --version
+docker compose version</div>
+          <p>Both must answer. On Linux you may need to add yourself to the
+            <code>docker</code> group to avoid <code>sudo</code> on every command.</p>
+        </section>
+
+        <section class="doc-section" id="docker-quick">
+          <h2>Quick start</h2>
+          <div class="doc-code">git clone -b Docker https://github.com/RandomPixelStudios/Multi-LLM.git
+cd Multi-LLM/docker
+docker compose up --build -d
+docker compose ps        # "healthy" once the port is bound</div>
+          <p>Open <code>http://localhost:5000</code>. The first account you create
+            becomes the admin.</p>
+
+          <h3>From another machine</h3>
+          <div class="doc-code">http://192.168.1.50:5000</div>
+          <p>Your host's LAN address, not <code>localhost</code>. See
+            <a href="#docker-lan">network and firewall</a>.</p>
+
+          <h3>It does not start on reboot</h3>
+          <p>By design. After a restart, start it yourself:</p>
+          <div class="doc-code">docker compose start</div>
+          <p>See <a href="#docker-commands">commands</a> for the full set.</p>
+        </section>
+
+        <section class="doc-section" id="docker-compose">
+          <h2>The compose file</h2>
+          <p>Two files sit next to each other in <code>docker/</code>. The compose
+            file points at both, so the layout looks more spread out than it is.</p>
+
+          <div class="doc-code" data-copy="services:
+  multillm:
+    build:
+      context: ..              # the repository root, because the build needs the source
+      dockerfile: docker/Dockerfile
+    image: multillm:latest
+    container_name: multillm
+    ports:
+      - "5000:5000"
+    volumes:
+      - multillm-data:/data
+    environment:
+      MULTI_LLM_DATA_DIR: /data
+      MULTI_LLM_PORT: "5000"
+      MULTI_LLM_EXPOSE: "1"
+      MULTI_LLM_SERVER: "1"
+    restart: "no"
+
+volumes:
+  multillm-data:">services:
+  multillm:
+    build:
+      context: ..              # the repository root, because the build needs the source
+      dockerfile: docker/Dockerfile
+    image: multillm:latest
+    container_name: multillm
+    ports:
+      - "5000:5000"
+    volumes:
+      - multillm-data:/data
+    environment:
+      MULTI_LLM_DATA_DIR: /data
+      MULTI_LLM_PORT: "5000"
+      MULTI_LLM_EXPOSE: "1"
+      MULTI_LLM_SERVER: "1"
+    restart: "no"
+
+volumes:
+  multillm-data:</div>
+
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>Line</th><th>Why it is there</th></tr></thead>
+              <tbody>
+                <tr><td><code>context: ..</code></td><td>The image builds the frontend and the Rust binary, so it needs the whole repository.</td></tr>
+                <tr><td><code>MULTI_LLM_EXPOSE: "1"</code></td><td>Binds all interfaces, so the team can reach it. Remove it for localhost only.</td></tr>
+                <tr><td><code>MULTI_LLM_SERVER: "1"</code></td><td>Multi-user mode: separate profiles, per-user keys and ports.</td></tr>
+                <tr><td><code>restart: "no"</code></td><td>Deliberate. Nothing starts after a reboot without you asking.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="doc-section" id="docker-users">
+          <h2>Users and keys</h2>
+
+          <h3>Creating accounts</h3>
+          <p>Two ways, both valid:</p>
+          <ul>
+            <li>At first start, from the login screen &mdash; the first account is the
+              admin.</li>
+            <li>Later, from the <strong>Users</strong> tab, visible to the admin
+              only.</li>
+          </ul>
+          <p>Only a username and a password. No e-mail, no external login, no
+            verification step.</p>
+
+          <h3>What each user gets</h3>
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>Isolated</th><th>Shared</th></tr></thead>
+              <tbody>
+                <tr><td>Providers and their keys</td><td>The container and its port</td></tr>
+                <tr><td>Models and virtual models</td><td>Image and version</td></tr>
+                <tr><td>API key, created automatically, never changes</td><td>Resource limits</td></tr>
+                <tr><td>Usage history and costs</td><td>The user list, for the admin</td></tr>
+                <tr><td>A personal port from 8123 upward</td><td></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Getting a user's key</h3>
+          <div class="doc-code">./multillm/get-key.sh anna</div>
+          <p>Prints that user's local API key, ready to paste into a tool. The key never
+            changes, so a tool configured once keeps working.</p>
+
+          <h3>How requests are attributed</h3>
+          <p>Every <code>/v1/*</code> request is matched to a user by the key in the
+            header. That is how several people share one port without seeing each
+            other's usage.</p>
+
+          <div class="callout">
+            <span class="callout-title">Stopping sign-ups once you have accounts</span>
+            <p>Leave <code>MULTI_LLM_ALLOW_SIGNUP</code> unset. Otherwise anyone who
+              reaches the port can create an account.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="docker-env">
+          <h2>Environment variables</h2>
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
+              <tbody>
+                <tr><td><code>MULTI_LLM_DATA_DIR</code></td><td><code>/data</code></td><td>Where everything is written</td></tr>
+                <tr><td><code>MULTI_LLM_PORT</code></td><td><code>5000</code></td><td>Fixed; not changeable at runtime</td></tr>
+                <tr><td><code>MULTI_LLM_EXPOSE</code></td><td><code>1</code></td><td>Bind all interfaces instead of localhost only</td></tr>
+                <tr><td><code>MULTI_LLM_SERVER</code></td><td><code>1</code></td><td>Multi-user mode</td></tr>
+                <tr><td><code>MULTI_LLM_USER_PORT_BASE</code></td><td><code>8123</code></td><td>First personal port per account</td></tr>
+                <tr><td><code>MULTI_LLM_ALLOW_SIGNUP</code></td><td>unset</td><td><code>1</code> allows registration without an admin session</td></tr>
+                <tr><td><code>MULTI_LLM_COOKIE_SECURE</code></td><td>unset</td><td><code>1</code> marks session cookies <code>Secure</code>; set it behind HTTPS</td></tr>
+                <tr><td><code>MULTI_LLM_PUBLIC_DASHBOARD</code></td><td>unset</td><td><code>1</code> serves read-only status without a key</td></tr>
+                <tr><td><code>MULTI_LLM_DAILY_BUDGET_USD</code></td><td>unset</td><td>Warns in the usage panel at 80 percent</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>Change them in the compose file, then
+            <code>docker compose up -d</code> to apply.</p>
+        </section>
+
+        <section class="doc-section" id="docker-data">
+          <h2>Data and volumes</h2>
+          <p>Everything lives in the named volume <code>multillm-data</code>, mounted
+            at <code>/data</code>:</p>
+          <div class="doc-code">/data/
+  users/
+    anna/          settings, providers, keys, usage
+    bernd/         the same, isolated
+  ...
+</div>
+          <p>The volume survives updates and rebuilds. That is the whole point of
+            using a named volume rather than a bind mount into the source tree.</p>
+
+          <div class="callout warn">
+            <span class="callout-title">API keys are in there, in plain storage</span>
+            <p>Provider keys live in the volume. Anyone with read access to the Docker
+              socket effectively has them. See
+              <a href="#docker-security">security</a>.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="docker-update">
+          <h2>Updating</h2>
+          <div class="doc-code">cd Multi-LLM
+git pull
+cd docker
+docker compose up --build -d</div>
+          <p>Only a rebuild is needed. The volume keeps all data, so users, keys and
+            usage history survive.</p>
+
+          <h3>Before a bigger jump</h3>
+          <p>Back up the volume first &mdash; see
+            <a href="#docker-backup">backup and restore</a>. Beta releases can change
+            the settings format.</p>
+        </section>
+
+        <section class="doc-section" id="docker-commands">
+          <h2>Command reference</h2>
+          <div class="doc-code">docker compose up --build -d   # build and start in the background
+docker compose ps          # status; "healthy" once the port is bound
+docker compose start       # start
+docker compose stop        # stop, keep everything
+docker compose down        # stop and remove the container, data stays
+docker compose down -v     # ALSO remove the data volume - destructive
+docker compose logs -f     # follow the log
+docker compose restart     # restart</div>
+
+          <div class="callout danger">
+            <span class="callout-title">down -v cannot be undone</span>
+            <p>It deletes accounts, provider keys and usage history. Take a backup
+              first if any of that matters.</p>
+          </div>
+
+          <h3>Moving the image</h3>
+          <div class="doc-code">docker save multillm:latest -o multillm.tar
+docker load -i multillm.tar</div>
+          <p>Use this to bring the image to a machine without building it there.</p>
+        </section>
+
+        <section class="doc-section" id="docker-logs">
+          <h2>Logs and troubleshooting</h2>
+
+          <h3>The container is unhealthy</h3>
+          <div class="doc-code">docker compose ps
+docker compose logs --tail 50</div>
+          <p>It becomes healthy once the port is actually bound. If it never does, the
+            log says why &mdash; usually a port already in use.</p>
+
+          <h3>Port already bound</h3>
+          <div class="doc-code">sudo lsof -i :5000</div>
+          <p>Change the host side of the mapping in the compose file, keeping the
+            container side at 5000.</p>
+
+          <h3>Login works, remote access does not</h3>
+          <p>Two candidates: the firewall on the host, and
+            <code>MULTI_LLM_EXPOSE</code> not set to 1. The first is
+            <code>ufw allow 5000/tcp</code> or the equivalent.</p>
+
+          <h3>Changes do not appear</h3>
+          <p>The image embeds a built frontend. Rebuild:
+            <code>docker compose up --build -d</code>. Reloading the browser is not
+            enough.</p>
+
+          <h3>Login loops or 401 behind a proxy</h3>
+          <p>Clock skew between host and container invalidates the session cookie.
+            Sync the time on both.</p>
+        </section>
+
+        <section class="doc-section" id="docker-lan">
+          <h2>Network and firewall</h2>
+          <p>Three things have to line up, and failure looks the same in all three
+            cases.</p>
+
+          <ol class="steps">
+            <li>
+              <h4>The container binds all interfaces</h4>
+              <p><code>MULTI_LLM_EXPOSE=1</code> in the compose file. Without it the
+                port is reachable from the host only.</p>
+            </li>
+            <li>
+              <h4>The host publishes the port</h4>
+              <p><code>"5000:5000"</code>. Publishing to <code>127.0.0.1:5000:5000</code>
+                restricts it to the host.</p>
+            </li>
+            <li>
+              <h4>The firewall allows it</h4>
+              <p><code>sudo ufw allow 5000/tcp</code> on Ubuntu, the equivalent on
+                macOS and Windows.</p>
+            </li>
+          </ol>
+
+          <h3>From inside another container</h3>
+          <p><code>localhost</code> is that container. Use
+            <code>host.docker.internal</code> instead, with Expose to LAN on.</p>
+
+          <h3>Finding your address</h3>
+          <div class="doc-code">hostname -I        # Linux
+ipconfig getifaddr en0   # macOS</div>
+
+          <div class="callout danger">
+            <span class="callout-title">Do not expose this to the internet</span>
+            <p>There is no TLS and no rate limiting in front of it. If the team is
+              remote, put a reverse proxy with TLS in front &mdash; see
+              <a href="guides.html#guide-proxy">HTTPS reverse proxy</a>.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="docker-backup">
+          <h2>Backup and restore</h2>
+
+          <h3>Backing up</h3>
+          <div class="doc-code">docker run --rm \
+  -v multillm-data:/data:ro \
+  -v "$PWD":/backup \
+  alpine tar czf /backup/multillm-backup-$(date +%F).tar.gz -C /data .</div>
+          <p>This contains provider keys in plain storage. Treat the file as a
+            secret.</p>
+
+          <h3>Restoring</h3>
+          <div class="doc-code">docker compose down
+docker volume create multillm-data
+docker run --rm \
+  -v multillm-data:/data \
+  -v "$PWD":/backup \
+  alpine tar xzf /backup/multillm-backup-2026-01-15.tar.gz -C /data
+docker compose up -d</div>
+
+          <div class="callout warn">
+            <span class="callout-title">Stop the container first</span>
+            <p>Backing up a running container can capture a half-written file. Always
+              <code>stop</code> or <code>down</code> before copying the volume.</p>
+          </div>
+
+          <h3>Configuration only</h3>
+          <p>For a settings-only restore, export the config in the web interface
+            instead &mdash; without keys. Accounts do not come with it; see
+            <a href="guides.html#guide-newpc">moving machines</a>.</p>
+        </section>
+
+        <section class="doc-section" id="docker-security">
+          <h2>Security</h2>
+          <p>Compared to the desktop app, the container moves the trust boundary: now
+            several people reach it over a network.</p>
+
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>Setting</th><th>Why</th></tr></thead>
+              <tbody>
+                <tr><td>Leave <code>MULTI_LLM_ALLOW_SIGNUP</code> unset</td><td>Otherwise anyone who reaches the port can create an account.</td></tr>
+                <tr><td>Put TLS in front for remote teams</td><td>Nothing in the container provides encryption.</td></tr>
+                <tr><td>Set <code>MULTI_LLM_COOKIE_SECURE=1</code> behind HTTPS</td><td>Session cookies are otherwise sent over plain HTTP.</td></tr>
+                <tr><td>Leave <code>MULTI_LLM_PUBLIC_DASHBOARD</code> unset</td><td>It makes usage and model data readable without a key.</td></tr>
+                <tr><td>Restrict Docker socket access</td><td>Read access to it is effectively read access to every provider key.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>What stays protected anyway</h3>
+          <p>Passwords are argon2id hashes, never readable. API key comparison is
+            constant-time. Failed logins are throttled per IP. Management routes need
+            a confirmation header that browser JavaScript sets, so a crafted link
+            cannot drive them.</p>
+          <p>What is <em>not</em> protected: traffic is unencrypted, and anyone with a
+            valid local key can spend from every configured provider.</p>
+
+          <h3>One key per person</h3>
+          <p>Extra keys can be limited to specific models and request rates. That way
+            you can revoke one person without touching the rest of the team.</p>
+        </section>
+
+        <section class="doc-section" id="docker-limits">
+          <h2>Limits</h2>
+          <p>What the container does not do, stated plainly.</p>
+
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>Limit</th><th>Consequence</th></tr></thead>
+              <tbody>
+                <tr><td>No TLS</td><td>Put a reverse proxy in front for anything beyond a trusted LAN.</td></tr>
+                <tr><td>No tray icon</td><td>No desktop window; everything is in the web interface.</td></tr>
+                <tr><td>No autostart</td><td>Nothing runs after a reboot until you start it.</td></tr>
+                <tr><td>Host port 5000 must be free</td><td>The container port is fixed; only the host side can move.</td></tr>
+                <tr><td>Local engines must be reachable from the container</td><td><code>localhost</code> inside the container is the container. Use <code>host.docker.internal</code>.</td></tr>
+                <tr><td>Rebuilds need the source tree</td><td>The image is built from the repository, not pulled from a registry.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout">
+            <span class="callout-title">This is beta</span>
+            <p>The API shape may change. Keep the volume backed up before updating
+              &mdash; see <a href="#docker-backup">backup</a>.</p>
+          </div>
+        </section>
+
+        <nav class="doc-pager">
+          <a href="api.html"><span class="dp-dir">Previous</span><span class="dp-title">…</span></a>
+          <a class="dp-next" href="faq.html"><span class="dp-dir">Next</span><span class="dp-title">…</span></a>
+        </nav>
+      </article>
+    </div>
+  </main>
+
+  <footer class="sitefoot" id="footer-slot"></footer>
+  <div class="consent hidden" id="consent-banner" role="region" aria-label="Privacy settings"><div id="consent-slot"></div></div>
+
+  <script src="docs-common.js"></script>
+  <script>
+    (function () {
+      var P = window.DOC_PAGES;
+      var cur = "docker";
+      var i = P.findIndex(function (p) { return p.key === cur; });
+      var prev = P[i - 1], next = P[i + 1];
+      var p = document.querySelector(".doc-pager a:not(.dp-next) .dp-title");
+      var n = document.querySelector(".doc-pager .dp-next .dp-title");
+      if (p && prev) { p.textContent = prev.title; }
+      if (n && next) { n.textContent = next.title; }
+    })();
+  </script>
+</body>
+</html>

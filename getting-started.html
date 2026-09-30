@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Install the app, create an account, confirm a request works, and connect your first tool." />
+  <title>Getting started – Multi LLM</title>
+  <link rel="icon" type="image/png" href="assets/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="docs.css?v=7" />
+  <script>try{var p=JSON.parse(localStorage.getItem("ml-prefs"));if(p&&p.theme==="light"){document.documentElement.setAttribute("data-theme","light");}}catch(e){}</script>
+</head>
+<body class="docs-page" data-page="start">
+  <header class="topbar" id="topbar-slot"></header>
+
+  <main class="docs-page">
+    <div class="docs-shell">
+      <aside class="docs-left">
+        <div class="doc-search-wrap">
+          <span class="search-icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+          <input id="doc-search" class="doc-search" type="search" placeholder="Search the docs…" autocomplete="off" spellcheck="false" aria-label="Search documentation" />
+          <div class="search-results hidden" id="search-results"></div>
+        </div>
+        <nav class="toc" aria-label="On this page">
+          <div class="toc-group">
+            <h5>On this page</h5>
+            <a href="#installation">Installation</a>
+            <a href="#first-run">First launch</a>
+            <a href="#verify">Verify it works</a>
+            <a href="#three-values">The three values</a>
+            <a href="#troubleshooting">If something fails</a>
+          </div>
+
+          <div class="toc-group">
+            <h5>Pages</h5>
+            <div id="page-list"></div>
+          </div>
+        </nav>
+      </aside>
+
+      <article class="doc-main">
+        <span class="doc-eyebrow">Start here</span>
+        <h1>Getting started</h1>
+        <p class="doc-lede">Install the app, create an account, confirm a request works, and connect your first tool.</p>
+
+        <section class="doc-section" id="installation">
+          <h2>Installation</h2>
+          <p>Multi LLM ships as a ready-made package per platform. Nothing has to
+            be compiled. Grab the file from
+            <a href="https://github.com/RandomPixelStudios/Multi-LLM/releases" target="_blank" rel="noopener">GitHub Releases</a>.</p>
+
+          <h3>Windows</h3>
+          <ol>
+            <li>Download <code>multi-llm_&lt;VERSION&gt;_x64_en-US.msi</code> or the
+              <code>setup.exe</code> next to it.</li>
+            <li>Run the installer. There is nothing to configure during setup.</li>
+            <li>Start <strong>Multi LLM</strong> from the Start menu.</li>
+          </ol>
+          <div class="callout">
+            <span class="callout-title">The .exe is the fallback</span>
+            <p>Use the NSIS <code>.exe</code> if the MSI does not fit your setup, for
+              example on an older Windows or an unmanaged machine.</p>
+          </div>
+
+          <h3>Linux</h3>
+          <p>Three package formats ship. Pick whichever matches your distribution:</p>
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>File</th><th>Distributions</th><th>Install</th></tr></thead>
+              <tbody>
+                <tr><td><code>.deb</code></td><td>Debian, Ubuntu, Mint, Pop!_OS</td><td><code>sudo apt install ./multi-llm_&lt;VERSION&gt;_amd64.deb</code></td></tr>
+                <tr><td><code>.rpm</code></td><td>Fedora, RHEL, openSUSE, Rocky</td><td><code>sudo dnf install ./multi-llm-&lt;VERSION&gt;-1.x86_64.rpm</code></td></tr>
+                <tr><td><code>AppImage</code></td><td>Any x86_64 distribution</td><td><code>chmod +x *.AppImage &amp;&amp; ./multi-llm_&lt;VERSION&gt;_amd64.AppImage</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>The AppImage runs from wherever you put it and installs nothing. The
+            <code>deb</code> and <code>rpm</code> add an entry to your application
+            menu and a tray icon for the running state.</p>
+          <div class="callout warn">
+            <span class="callout-title">Runtime libraries on Linux</span>
+            <p>The packaged builds need <code>libwebkit2gtk-4.1</code> and
+              <code>libayatana-appindicator3-1</code>. Debian 12+, Ubuntu 22.04+,
+              Fedora 38+ and openSUSE Leap 15.4 ship both. The AppImage bundles
+              what it needs.</p>
+          </div>
+
+          <h3>macOS</h3>
+          <ol>
+            <li>Download the <code>aarch64</code> DMG for Apple Silicon
+              (M1/M2/M3/M4) or <code>x64</code> for Intel Macs.</li>
+            <li>Open the DMG and drag <strong>Multi LLM</strong> into
+              <strong>Applications</strong>.</li>
+            <li>First launch: right-click the app, choose <strong>Open</strong>, then
+              confirm. Gatekeeper only asks once.</li>
+          </ol>
+          <div class="callout">
+            <span class="callout-title">Why the Open dialog appears</span>
+            <p>The DMG is not signed or notarised. Apple charges $99 a year for the
+              signing certificate, which does not pay off for a private beta. The
+              warning is expected and appears one time only.</p>
+          </div>
+
+          <h3>Docker</h3>
+          <p>The container image runs the same app in multi-user mode for a whole
+            team. See <a href="docker.html">Docker</a> for the full setup, or jump
+            straight to the commands:</p>
+          <div class="doc-code">git clone -b Docker https://github.com/RandomPixelStudios/Multi-LLM.git
+cd Multi-LLM/docker
+docker compose up --build -d
+docker compose ps        # "healthy" once the port is bound</div>
+          <p>Then open <code>http://localhost:5000</code> and create the first
+            account, which becomes the admin.</p>
+        </section>
+
+        <section class="doc-section" id="first-run">
+          <h2>First launch</h2>
+          <p>Multi LLM keeps every API key on your own machine, so it starts with a
+            single question: who is using it? Accounts are local. There is no
+            sign-up, no e-mail address, no external login.</p>
+
+          <ol class="steps">
+            <li>
+              <h4>Create a user</h4>
+              <p>Enter a username and a password of at least ten characters.
+                That account is the first one and automatically becomes the admin.</p>
+              <p>Add more accounts later from the user manager, or from the login
+                screen. Each one gets its own providers, models, API key, usage
+                history and personal port.</p>
+            </li>
+            <li>
+              <h4>Add a provider</h4>
+              <p>Open <strong>Providers</strong> and add a provider. The picker
+                lists every supported service; you supply the base URL and the API
+                key from that provider's own dashboard.</p>
+              <p>Models are fetched from the provider once a key is present. Enable
+                the ones you want to use.</p>
+            </li>
+            <li>
+              <h4>Watch the proxy start</h4>
+              <p>The status line at the top of the window turns green once the
+                server is listening. The default port is
+                <code>5000</code>, changeable under <strong>API</strong>.</p>
+            </li>
+          </ol>
+
+          <div class="callout ok">
+            <span class="callout-title">Where things are stored</span>
+            <p>Settings, provider configurations, API keys and usage figures live in
+              your user profile directory. Nothing is sent anywhere. Export your
+              configuration from <strong>Settings → Data</strong> before updating
+              or moving machines.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="verify">
+          <h2>Verify it works</h2>
+          <p>Confirm the proxy answers before you wire up a tool. Open
+            <strong>API → Client config snippets</strong> — the app shows a ready
+            command for curl, Node, Go, PowerShell, Bash, Python, Java and
+            jq.</p>
+
+          <h3>With curl</h3>
+          <p>Paste your key from <strong>API → API Keys</strong>:</p>
+          <div class="doc-code">curl http://localhost:5000/v1/models \
+  -H "Authorization: Bearer YOUR_LOCAL_KEY"</div>
+          <p>A JSON list of every enabled model comes back. If you get
+            <code>invalid_api_key</code>, the key is wrong; if you get
+            <code>no models enabled</code>, a provider exists but all its models
+            are switched off.</p>
+
+          <h3>With a completion request</h3>
+          <div class="doc-code">curl http://localhost:5000/v1/chat/completions \
+  -H "Authorization: Bearer YOUR_LOCAL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "multillm",
+    "messages": [{"role": "user", "content": "Say hello in five words."}]
+  }'</div>
+          <p><code>multillm</code> is the built-in bundle. It picks a model for you
+            using the routing strategy you picked, which is the easiest way to
+            confirm the whole chain works.</p>
+
+          <h3>What a healthy response looks like</h3>
+          <ul>
+            <li><strong>HTTP 200</strong> with a <code>choices</code> array.</li>
+            <li>The usage panel counts the request and its tokens.</li>
+            <li>Streaming works if you set <code>"stream": true</code>.</li>
+          </ul>
+          <p>If a request fails, the provider card in <strong>Providers</strong>
+            shows a red dot and the exact reason. See
+            <a href="guides.html#guide-troubleshoot">troubleshooting</a>.</p>
+        </section>
+
+        <section class="doc-section" id="three-values">
+          <h2>The three values</h2>
+          <p>Any tool that speaks the OpenAI API needs three things. That is the
+            entire integration — no plugin, no SDK change, no re-training of
+            muscle memory.</p>
+
+          <div class="deflist">
+            <div class="defrow">
+              <dt>Base URL</dt>
+              <dd><code>http://localhost:5000/v1</code><br />
+                The port follows the <strong>API</strong> panel if you changed it.
+                Some tools want the URL without <code>/v1</code> — check the tool's
+                own field label.</dd>
+            </div>
+            <div class="defrow">
+              <dt>API key</dt>
+              <dd>Your local key from <strong>API → API Keys</strong>.<br />
+                It authenticates <em>you</em> to your own proxy, not to a provider.
+                Provider keys stay behind it and are never sent to the tool.</dd>
+            </div>
+            <div class="defrow">
+              <dt>Model</dt>
+              <dd>Any enabled model name, or a virtual model.<br />
+                Use <code>multillm</code> to let the proxy choose. Use an exact
+                model id when you want one specific provider.</dd>
+            </div>
+          </div>
+
+          <div class="callout">
+            <span class="callout-title">From a second machine</span>
+            <p>Enable <strong>Expose to LAN</strong> in the API panel, then use your
+              machine's LAN address instead of <code>localhost</code>. The API tab
+              shows the exact URL, and asks once for permission to open the
+              firewall port on Windows.</p>
+          </div>
+
+          <p>Ready-made instructions for 21 editors, agents and chat front ends are
+            on <a href="connect.html">Connect a tool</a>.</p>
+        </section>
+
+        <section class="doc-section" id="troubleshooting">
+          <h2>If something fails</h2>
+          <p>These cover most first-run problems. The
+            <a href="faq.html">FAQ</a> has more, and
+            <a href="guides.html#guide-troubleshoot">troubleshooting</a> goes deeper.</p>
+
+          <h3>The port is already in use</h3>
+          <p>Another program holds <code>5000</code>. Change the port in
+            <strong>API → Port</strong>; every tool that points at
+            <code>localhost:5000</code> has to follow.</p>
+
+          <h3>A provider shows no models</h3>
+          <p>The key is wrong, the base URL does not match the provider's format, or
+            the provider is unreachable from this machine. Use
+            <em>Test</em> on the provider card — the result dialog names the reason,
+            for example an HTTP 401 for a bad key.</p>
+
+          <h3>A tool says "connection refused"</h3>
+          <p>The proxy is not running. Check that the Multi LLM window shows a
+            green status line, and that the tool's base URL points at the right
+            port.</p>
+
+          <h3>Nothing is counted in Usage</h3>
+          <p>Only requests that pass through the proxy are counted. If you sent
+            something directly to a provider, it does not appear here — and neither
+            does the cost.</p>
+
+          <h3>The tray icon is missing</h3>
+          <p>On Linux the tray needs a StatusNotifier host. Without one the window
+            still works, the icon just does not appear.</p>
+        </section>
+
+        <nav class="doc-pager">
+          <a href="docs.html"><span class="dp-dir">Previous</span><span class="dp-title">…</span></a>
+          <a class="dp-next" href="connect.html"><span class="dp-dir">Next</span><span class="dp-title">…</span></a>
+        </nav>
+      </article>
+    </div>
+  </main>
+
+  <footer class="sitefoot" id="footer-slot"></footer>
+  <div class="consent hidden" id="consent-banner" role="region" aria-label="Privacy settings"><div id="consent-slot"></div></div>
+
+  <script src="docs-common.js"></script>
+  <script>
+    (function () {
+      var P = window.DOC_PAGES;
+      var cur = "start";
+      var i = P.findIndex(function (p) { return p.key === cur; });
+      var prev = P[i - 1], next = P[i + 1];
+      var p = document.querySelector(".doc-pager a:not(.dp-next) .dp-title");
+      var n = document.querySelector(".doc-pager .dp-next .dp-title");
+      if (p && prev) { p.textContent = prev.title; }
+      if (n && next) { n.textContent = next.title; }
+    })();
+  </script>
+</body>
+</html>

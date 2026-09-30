@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Exact settings for the editors, agents, chat front ends and platforms that speak the OpenAI API." />
+  <title>Connect a tool – Multi LLM</title>
+  <link rel="icon" type="image/png" href="assets/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="docs.css?v=7" />
+  <script>try{var p=JSON.parse(localStorage.getItem("ml-prefs"));if(p&&p.theme==="light"){document.documentElement.setAttribute("data-theme","light");}}catch(e){}</script>
+</head>
+<body class="docs-page" data-page="connect">
+  <header class="topbar" id="topbar-slot"></header>
+
+  <main class="docs-page">
+    <div class="docs-shell">
+      <aside class="docs-left">
+        <div class="doc-search-wrap">
+          <span class="search-icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+          <input id="doc-search" class="doc-search" type="search" placeholder="Search the docs…" autocomplete="off" spellcheck="false" aria-label="Search documentation" />
+          <div class="search-results hidden" id="search-results"></div>
+        </div>
+        <nav class="toc" aria-label="On this page">
+          <div class="toc-group">
+            <h5>By kind</h5>
+            <a href="#editor-group" class="toc-sub">Editor</a>
+            <a href="#cline" class="toc-sub">Cline</a>
+            <a href="#continue" class="toc-sub">Continue</a>
+            <a href="#cursor" class="toc-sub">Cursor</a>
+            <a href="#kilo" class="toc-sub">Kilo Code</a>
+            <a href="#neovim" class="toc-sub">Neovim</a>
+            <a href="#roo" class="toc-sub">Roo Code</a>
+            <a href="#vscode" class="toc-sub">VS Code</a>
+            <a href="#windsurf" class="toc-sub">Windsurf</a>
+            <a href="#zed" class="toc-sub">Zed</a>
+            <a href="#cli-group" class="toc-sub">CLI</a>
+            <a href="#aider" class="toc-sub">Aider</a>
+            <a href="#claudecode" class="toc-sub">Claude Code</a>
+            <a href="#opencode" class="toc-sub">OpenCode</a>
+            <a href="#chat-front-end-group" class="toc-sub">Chat front end</a>
+            <a href="#anything" class="toc-sub">AnythingLLM</a>
+            <a href="#cherry" class="toc-sub">Cherry Studio</a>
+            <a href="#libre" class="toc-sub">LibreChat</a>
+            <a href="#lobe" class="toc-sub">LobeChat</a>
+            <a href="#tut-webui" class="toc-sub">Open WebUI</a>
+            <a href="#typing" class="toc-sub">TypingMind</a>
+            <a href="#platform-group" class="toc-sub">Platform</a>
+            <a href="#dify" class="toc-sub">Dify</a>
+            <a href="#flowise" class="toc-sub">Flowise</a>
+            <a href="#automation-group" class="toc-sub">Automation</a>
+            <a href="#n8n" class="toc-sub">n8n</a>
+            <a href="#library-group" class="toc-sub">Library</a>
+            <a href="#roo-langchain" class="toc-sub">LangChain</a>
+          </div>
+          <div class="toc-group">
+            <h5>Basics</h5>
+            <a href="#field-names" class="toc-sub">Field names differ per tool</a>
+            <a href="#common-mistakes" class="toc-sub">Common mistakes</a>
+          </div>
+          <div class="toc-group">
+            <h5>Pages</h5>
+            <div id="page-list"></div>
+          </div>
+        </nav>
+      </aside>
+
+      <article class="doc-main">
+        <span class="doc-eyebrow">Integration</span>
+        <h1>Connect a tool</h1>
+        <p class="doc-lede">Exact settings for the editors, agents, chat front ends and platforms that speak the OpenAI API.</p>
+        <section class="doc-section" id="field-names">
+          <h2>Field names differ per tool</h2>
+          <p>Almost every tool has the same three values, but the names are not
+            the same everywhere. This is the single most common reason a tool
+            keeps talking to the real OpenAI after you thought you pointed it at
+            Multi LLM: the tool ignores an unrecognised field and falls back to its
+            default endpoint.</p>
+          <div class="doc-table-wrap">
+            <table class="doc-table">
+              <thead><tr><th>Tool family</th><th>Base URL field</th><th>Key field</th><th>Model field</th></tr></thead>
+              <tbody>
+                <tr><td>Continue, Cline, Roo, Kilo</td><td><code>apiBase</code> / <code>openAiBaseUrl</code></td><td><code>apiKey</code> / <code>openAiApiKey</code></td><td><code>model</code> / <code>openAiModelId</code></td></tr>
+                <tr><td>Cursor, Windsurf</td><td><code>baseUrl</code></td><td><code>apiKey</code></td><td><code>model</code></td></tr>
+                <tr><td>Zed</td><td><code>api_url</code></td><td><code>api_key</code></td><td><code>model</code></td></tr>
+                <tr><td>Claude Code</td><td><code>ANTHROPIC_BASE_URL</code> &mdash; <strong>no /v1</strong></td><td><code>ANTHROPIC_AUTH_TOKEN</code></td><td><code>ANTHROPIC_MODEL</code></td></tr>
+                <tr><td>Open WebUI, LobeChat, LibreChat</td><td><code>URL</code> / <code>apiBaseURL</code></td><td><code>KEY</code> / <code>apiKey</code></td><td><code>MODELS</code> / <code>models</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout warn">
+            <span class="callout-title">The /v1 suffix</span>
+            <p>Most tools want the base URL <em>with</em> <code>/v1</code> at the end.
+              Claude Code is the exception: it wants the bare address without a path,
+              because it appends the Anthropic path itself. Getting this backwards is
+              the most common single mistake.</p>
+          </div>
+        </section>
+
+        <section class="doc-section" id="by-tool">
+          <h2>Step by step</h2>
+          <p>Every entry gives the exact path to the setting, a ready-to-paste
+            configuration, and what that particular tool does with your input. The
+            placeholder <code>YOUR_LOCAL_KEY</code> is the key from
+            <strong>API &rarr; API Keys</strong>.</p>
+          <h3 id="editor-group">Editor</h3>
+          <div class="tool-card" id="cline">
+            <h3>Cline</h3>
+            <span class="tool-kind">Cline</span>
+            <p><strong>Where:</strong> The sidebar gear icon &rsaquo; API Provider &rsaquo; OpenAI Compatible</p>
+            <div class="doc-code">{
+  "provider": "openai",
+  "openAiBaseUrl": "http://localhost:5000/v1",
+  "openAiApiKey": "YOUR_LOCAL_KEY",
+  "openAiModelId": "multillm"
+}</div>
+            <p>Cline uses <code>openAiBaseUrl</code> and <code>openAiApiKey</code>. Both must be set; an empty base URL falls back to the official OpenAI endpoint.</p>
+          </div>
+          <div class="tool-card" id="continue">
+            <h3>Continue</h3>
+            <span class="tool-kind">Continue</span>
+            <p><strong>Where:</strong> Config gear &rsaquo; Models &rsaquo; Add a model &rsaquo; OpenAI</p>
+            <div class="doc-code">{
+  "models": [
+    {
+      "title": "multillm",
+      "provider": "openai",
+      "model": "multillm",
+      "apiBase": "http://localhost:5000/v1",
+      "apiKey": "YOUR_LOCAL_KEY"
+    }
+  ]
+}</div>
+            <p>Continue names the field <code>apiBase</code>, not <code>baseUrl</code>. A <code>baseUrl</code> here is silently ignored and requests go to api.openai.com.</p>
+          </div>
+          <div class="tool-card" id="cursor">
+            <h3>Cursor</h3>
+            <span class="tool-kind">Cursor</span>
+            <p><strong>Where:</strong> Settings &rsaquo; Models &rsaquo; API Keys &rsaquo; Add custom model</p>
+            <div class="doc-code">{
+  "name": "multillm",
+  "apiKey": "YOUR_LOCAL_KEY",
+  "baseUrl": "http://localhost:5000/v1",
+  "provider": "openai"
+}</div>
+            <p>Pick <strong>OpenAI</strong> as the provider, then switch every other model off in the list so queries do not go to a provider that needs a real key.</p>
+          </div>
+          <div class="tool-card" id="kilo">
+            <h3>Kilo Code</h3>
+            <span class="tool-kind">Kilo Code</span>
+            <p><strong>Where:</strong> Kilo icon &rsaquo; Settings &rsaquo; API Provider &rsaquo; OpenAI Compatible</p>
+            <div class="doc-code">{
+  "provider": "openai",
+  "openAiBaseUrl": "http://localhost:5000/v1",
+  "openAiApiKey": "YOUR_LOCAL_KEY",
+  "openAiModelId": "multillm"
+}</div>
+            <p>Same field names as Cline and Roo, since all three are VS Code extensions with the same provider settings component.</p>
+          </div>
+          <div class="tool-card" id="neovim">
+            <h3>Neovim</h3>
+            <span class="tool-kind">Neovim</span>
+            <p><strong>Where:</strong> In <code>~/.config/nvim/</code> through the opencode.nvim plugin, or the shared <code>~/.config/opencode/opencode.json</code></p>
+            <div class="doc-code">{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "multillm": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Multi LLM (local)",
+      "options": {
+        "baseURL": "http://localhost:5000/v1"
+      },
+      "models": {
+        "multillm": { "name": "multillm" }
+      }
+    }
+  },
+  "model": "multillm/multillm"
+}</div>
+            <p>OpenCode needs the provider name and model name separated by a slash. That format is OpenCode's, not Multi LLM's.</p>
+          </div>
+          <div class="tool-card" id="roo">
+            <h3>Roo Code</h3>
+            <span class="tool-kind">Roo Code</span>
+            <p><strong>Where:</strong> Roo icon &rsaquo; Settings &rsaquo; API Provider &rsaquo; OpenAI Compatible</p>
+            <div class="doc-code">{
+  "provider": "openai",
+  "openAiBaseUrl": "http://localhost:5000/v1",
+  "openAiApiKey": "YOUR_LOCAL_KEY",
+  "openAiModelId": "multillm"
+}</div>
+            <p>Identical to Cline, since both are VS Code extensions from the same lineage. Roo also needs <code>Use custom base URL</code> switched on.</p>
+          </div>
+          <div class="tool-card" id="vscode">
+            <h3>VS Code</h3>
+            <span class="tool-kind">Continue</span>
+            <p><strong>Where:</strong> Settings gear icon &rsaquo; Chat &rsaquo; the model dropdown &rsaquo; Add Models &rsaquo; OpenAI Compatible</p>
+            <div class="doc-code">{
+  "models": [
+    {
+      "name": "multillm",
+      "provider": "openai",
+      "model": "multillm",
+      "contextLength": 128000,
+      "baseUrl": "http://localhost:5000/v1",
+      "apiKey": "YOUR_LOCAL_KEY"
+    }
+  ]
+}</div>
+            <p>Paste the JSON into the <code>models</code> array. If your setup already has entries, add Multi LLM as a second one instead of replacing the list.</p>
+          </div>
+          <div class="tool-card" id="windsurf">
+            <h3>Windsurf</h3>
+            <span class="tool-kind">Windsurf</span>
+            <p><strong>Where:</strong> Windsurf icon &rsaquo; Settings &rsaquo; AI Providers &rsaquo; Add custom</p>
+            <div class="doc-code">{
+  "name": "multillm",
+  "baseUrl": "http://localhost:5000/v1",
+  "apiKey": "YOUR_LOCAL_KEY",
+  "model": "multillm"
+}</div>
+            <p>Windsurf accepts a local URL; the provider must be set to <strong>OpenAI</strong>, not Anthropic.</p>
+          </div>
+          <div class="tool-card" id="zed">
+            <h3>Zed</h3>
+            <span class="tool-kind">Zed</span>
+            <p><strong>Where:</strong> Cmd/Ctrl+comma &rsaquo; Language Models &rsaquo; OpenAI API Key</p>
+            <div class="doc-code">{
+  "language_models": {
+    "openai": {
+      "api_url": "http://localhost:5000/v1",
+      "api_key": "YOUR_LOCAL_KEY"
+    }
+  },
+  "default_model": {
+    "provider": "openai",
+    "model": "multillm"
+  }
+}</div>
+            <p>Zed needs the key in <strong>openai</strong>, not <code>anthropic</code>, even though Multi LLM translates to Anthropic under the hood.</p>
+          </div>
+          <h3 id="cli-group">CLI</h3>
+          <div class="tool-card" id="aider">
+            <h3>Aider</h3>
+            <span class="tool-kind">Aider</span>
+            <p><strong>Where:</strong> Environment variables in your shell or a .env file</p>
+            <div class="doc-code">export OPENAI_API_KEY=YOUR_LOCAL_KEY
+export OPENAI_API_BASE=http://localhost:5000/v1
+export AIDER_MODEL=multillm</div>
+            <p>Aider treats everything as OpenAI. Note that it needs <code>OPENAI_API_KEY</code> set even though the value is your own local key, not an OpenAI one.</p>
+          </div>
+          <div class="tool-card" id="claudecode">
+            <h3>Claude Code</h3>
+            <span class="tool-kind">Claude Code</span>
+            <p><strong>Where:</strong> Environment variables before starting the CLI</p>
+            <div class="doc-code">export ANTHROPIC_BASE_URL=http://localhost:5000
+export ANTHROPIC_AUTH_TOKEN=YOUR_LOCAL_KEY
+export ANTHROPIC_MODEL=multillm</div>
+            <p>Claude Code speaks the Anthropic protocol, which Multi LLM translates. The base URL has <strong>no</strong> <code>/v1</code> suffix here, unlike the OpenAI-compatible tools.</p>
+          </div>
+          <div class="tool-card" id="opencode">
+            <h3>OpenCode</h3>
+            <span class="tool-kind">OpenCode</span>
+            <p><strong>Where:</strong> In <code>opencode.json</code> in your project or <code>~/.config/opencode/</code></p>
+            <div class="doc-code">{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "multillm": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Multi LLM (local)",
+      "options": { "baseURL": "http://localhost:5000/v1" },
+      "models": { "multillm": { "name": "multillm" } }
+    }
+  },
+  "model": "multillm/multillm"
+}</div>
+            <p>Neovim and OpenCode share one configuration file. Set it once in <code>~/.config/opencode/opencode.json</code> and both pick it up.</p>
+          </div>
+          <h3 id="chat-front-end-group">Chat front end</h3>
+          <div class="tool-card" id="anything">
+            <h3>AnythingLLM</h3>
+            <span class="tool-kind">AnythingLLM</span>
+            <p><strong>Where:</strong> Settings &rsaquo; LLM Providers &rsaquo; OpenAI-like &rsaquo; Add</p>
+            <div class="doc-code">{
+  "apiBase": "http://localhost:5000/v1",
+  "apiKey": "YOUR_LOCAL_KEY",
+  "model": "multillm"
+}</div>
+            <p>AnythingLLM validates on save. Start the proxy before adding the provider, or the check fails.</p>
+          </div>
+          <div class="tool-card" id="cherry">
+            <h3>Cherry Studio</h3>
+            <span class="tool-kind">Cherry Studio</span>
+            <p><strong>Where:</strong> Settings &rsaquo; Model Services &rsaquo; Add custom service &rsaquo; OpenAI</p>
+            <div class="doc-code">{
+  "apiHost": "http://localhost:5000/v1",
+  "apiKey": "YOUR_LOCAL_KEY",
+  "models": ["multillm"]
+}</div>
+            <p>Cherry Studio names the base URL <code>apiHost</code>. It also needs a model added to the list before it appears in the picker.</p>
+          </div>
+          <div class="tool-card" id="libre">
+            <h3>LibreChat</h3>
+            <span class="tool-kind">LibreChat</span>
+            <p><strong>Where:</strong> Settings &rsaquo; Providers &rsaquo; OpenAI &rsaquo; Add</p>
+            <div class="doc-code">{
+  "key": "YOUR_LOCAL_KEY",
+  "baseURL": "http://localhost:5000/v1",
+  "models": ["multillm"]
+}</div>
+            <p>LibreChat validates the connection before it accepts it. Start Multi LLM first, otherwise the test call fails.</p>
+          </div>
+          <div class="tool-card" id="lobe">
+            <h3>LobeChat</h3>
+            <span class="tool-kind">LobeChat</span>
+            <p><strong>Where:</strong> Settings &rsaquo; Language Model &rsaquo; OpenAI &rsaquo; Proxy URL</p>
+            <div class="doc-code">{
+  "apiKey": "YOUR_LOCAL_KEY",
+  "apiBaseURL": "http://localhost:5000/v1",
+  "models": ["multillm"]
+}</div>
+            <p>LobeChat stores the model list as an array, not a string. It is the only field where a comma-separated string fails silently.</p>
+          </div>
+          <div class="tool-card" id="tut-webui">
+            <h3>Open WebUI</h3>
+            <span class="tool-kind">Open WebUI</span>
+            <p><strong>Where:</strong> Admin panel &rsaquo; Settings &rsaquo; Connections &rsaquo; Add OpenAI-compatible connection</p>
+            <div class="doc-code">{
+  "name": "Multi LLM",
+  "type": "openai",
+  "config": {
+    "URL": "http://localhost:5000/v1",
+    "KEY": "YOUR_LOCAL_KEY",
+    "MODELS": "multillm"
+  }
+}</div>
+            <p>The connection type must be <strong>OpenAI</strong>. In the model list, add <code>multillm</code> by hand; Open WebUI does not discover models on its own.</p>
+          </div>
+          <div class="tool-card" id="typing">
+            <h3>TypingMind</h3>
+            <span class="tool-kind">TypingMind</span>
+            <p><strong>Where:</strong> Settings &rsaquo; API &rsaquo; OpenAI Custom &rsaquo; Add</p>
+            <div class="doc-code">{
+  "name": "Multi LLM",
+  "apiKey": "YOUR_LOCAL_KEY",
+  "apiEndpoint": "http://localhost:5000/v1",
+  "model": "multillm"
+}</div>
+            <p>TypingMind is web-based, so <code>localhost</code> means <em>your own machine</em>. From another device, use your LAN address instead.</p>
+          </div>
+          <h3 id="platform-group">Platform</h3>
+          <div class="tool-card" id="dify">
+            <h3>Dify</h3>
+            <span class="tool-kind">Dify</span>
+            <p><strong>Where:</strong> Settings &rsaquo; Model Provider &rsaquo; OpenAI-API-compatible &rsaquo; Add model</p>
+            <div class="doc-code">{
+  "model": "multillm",
+  "api_base": "http://localhost:5000/v1",
+  "api_key": "YOUR_LOCAL_KEY",
+  "mode": "chat"
+}</div>
+            <p>Dify needs the mode set to <strong>chat</strong>. Leaving it on completion makes it send an old-style request the proxy answers with a 400.</p>
+          </div>
+          <div class="tool-card" id="flowise">
+            <h3>Flowise</h3>
+            <span class="tool-kind">Flowise</span>
+            <p><strong>Where:</strong> Chatflows &rsaquo; Tools &rsaquo; OpenAI &rsaquo; create a new OpenAI connection</p>
+            <div class="doc-code">{
+  "openAIApiKey": "YOUR_LOCAL_KEY",
+  "openAIBasePath": "http://localhost:5000/v1",
+  "modelName": "multillm"
+}</div>
+            <p>Flowise checks the key with a probe request on saving. If the proxy is not running yet, saving fails even though the settings are right.</p>
+          </div>
+          <h3 id="automation-group">Automation</h3>
+          <div class="tool-card" id="n8n">
+            <h3>n8n</h3>
+            <span class="tool-kind">n8n</span>
+            <p><strong>Where:</strong> Credentials &rsaquo; New &rsaquo; OpenAiApi &rsaquo; Base URL override</p>
+            <div class="doc-code">{
+  "apiKey": "YOUR_LOCAL_KEY",
+  "baseURL": "http://localhost:5000/v1",
+  "model": "multillm"
+}</div>
+            <p>n8n runs in Docker, and there <code>localhost</code> is the n8n container. Use <code>host.docker.internal</code> instead, and enable <strong>Expose to LAN</strong> in Multi LLM.</p>
+          </div>
+          <h3 id="library-group">Library</h3>
+          <div class="tool-card" id="roo-langchain">
+            <h3>LangChain</h3>
+            <span class="tool-kind">LangChain</span>
+            <p><strong>Where:</strong> In your Python or JavaScript code</p>
+            <div class="doc-code">from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(
+    base_url="http://localhost:5000/v1",
+    api_key="YOUR_LOCAL_KEY",
+    model="multillm",
+)</div>
+            <p>Any OpenAI client library works the same way. The three arguments are base URL, key and model &mdash; there is nothing Multi-LLM-specific in the code.</p>
+          </div>
+        </section>
+        <section class="doc-section" id="common-mistakes">
+          <h2>Common mistakes</h2>
+          <h3>It still reaches api.openai.com</h3>
+          <p>The base URL field name does not match. Check the table above for your
+            tool. A tool with an unrecognised key silently uses its default endpoint,
+            so requests go out to the real provider and your local key is rejected
+            there &mdash; which looks like a bad key rather than a wrong setting.</p>
+
+          <h3>Connection refused</h3>
+          <p>Multi LLM is not running, or the port differs. The API panel shows the
+            exact URL to use. On Windows the firewall asks once for permission to
+            open it; declining that leaves the proxy unreachable from other tools.</p>
+
+          <h3>It works locally, not from a container</h3>
+          <p>Inside Docker, <code>localhost</code> is the container itself. Use
+            <code>host.docker.internal</code> and enable <strong>Expose to LAN</strong>.
+            See <a href="docker.html">Docker</a>.</p>
+
+          <h3>The tool does not list my models</h3>
+          <p>Most tools do not discover models; they use what you type. Enter
+            <code>multillm</code> by hand, or check
+            <code>GET /v1/models</code> to see what the proxy actually exposes.</p>
+
+          <h3>Streaming cuts off</h3>
+          <p>Some tools assume every provider supports the same streaming events. If a
+            response stops mid-sentence, turn streaming off in the tool and compare.
+            The <a href="concepts.html#concepts-streaming">streaming page</a> explains
+            the differences.</p>
+
+          <div class="callout">
+            <span class="callout-title">Still stuck?</span>
+            <p>The <a href="faq.html">FAQ</a> lists the errors by message text, and
+              <a href="guides.html#guide-troubleshoot">troubleshooting</a> walks
+              through them in order.</p>
+          </div>
+        </section>
+        <nav class="doc-pager">
+          <a href="getting-started.html"><span class="dp-dir">Previous</span><span class="dp-title">…</span></a>
+          <a class="dp-next" href="concepts.html"><span class="dp-dir">Next</span><span class="dp-title">…</span></a>
+        </nav>
+      </article>
+    </div>
+  </main>
+
+  <footer class="sitefoot" id="footer-slot"></footer>
+  <div class="consent hidden" id="consent-banner" role="region" aria-label="Privacy settings"><div id="consent-slot"></div></div>
+
+  <script src="docs-common.js"></script>
+  <script>
+    (function () {
+      var P = window.DOC_PAGES;
+      var cur = "connect";
+      var i = P.findIndex(function (p) { return p.key === cur; });
+      var prev = P[i - 1], next = P[i + 1];
+      var p = document.querySelector(".doc-pager a:not(.dp-next) .dp-title");
+      var n = document.querySelector(".doc-pager .dp-next .dp-title");
+      if (p && prev) { p.textContent = prev.title; }
+      if (n && next) { n.textContent = next.title; }
+    })();
+  </script>
+</body>
+</html>
