@@ -74,13 +74,82 @@
     }
   }
 
-  /* ---------------- Consent ----------------
-   * GitHub Pages writes server logs before any page of ours can ask
-   * anything, so a stored "accepted" would claim a consent nobody was
-   * asked for. The banner therefore shows on every visit and stores
-   * nothing. Its buttons close it; they do not pretend to change what
-   * GitHub already recorded.
-   */
+  /* ---------------- Consent for external content ----------------
+   * Before consent nothing is loaded from a third party: no Google Fonts,
+   * no YouTube player, only files that ship with this site. "Necessary
+   * only" keeps it that way permanently; "accept all" loads the fonts and
+   * swaps the video placeholder for the real player.
+   *
+   * GitHub Pages writes its server log before any page of ours can ask
+   * anything. The banner says so, because no button here can prevent it. */
+
+  var GOOGLE_FONTS =
+    "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900" +
+    "&family=JetBrains+Mono:wght@400;500&display=swap";
+
+  function readConsent() {
+    try { return localStorage.getItem(CONSENT_KEY); } catch (e) { return null; }
+  }
+
+  function writeConsent(value) {
+    try { localStorage.setItem(CONSENT_KEY, value); } catch (e) {}
+  }
+
+  /* Injects the font stylesheet only after consent, and removes it again
+   * when the visitor switches back to necessary-only. */
+  function applyFonts(on) {
+    var id = "ml-fonts";
+    var el = document.getElementById(id);
+    if (on) {
+      if (el) { return; }
+      var pre1 = document.createElement("link");
+      pre1.rel = "preconnect";
+      pre1.href = "https://fonts.googleapis.com";
+      var pre2 = document.createElement("link");
+      pre2.rel = "preconnect";
+      pre2.href = "https://fonts.gstatic.com";
+      pre2.crossOrigin = "anonymous";
+      var css = document.createElement("link");
+      css.id = id;
+      css.rel = "stylesheet";
+      css.href = GOOGLE_FONTS;
+      document.head.appendChild(pre1);
+      document.head.appendChild(pre2);
+      document.head.appendChild(css);
+    } else {
+      if (el) { el.remove(); }
+      var p1 = document.querySelector('link[href="https://fonts.googleapis.com"][rel="preconnect"]:not([id])');
+      var p2 = document.querySelector('link[href="https://fonts.gstatic.com"][rel="preconnect"]:not([id])');
+      if (p1) { p1.remove(); }
+      if (p2) { p2.remove(); }
+    }
+  }
+
+  /* Replaces the click-to-load placeholder with the real YouTube embed.
+   * Without consent the placeholder stays, so nothing is fetched. */
+  function applyVideo(on) {
+    var slot = document.getElementById("video-slot");
+    if (!slot) { return; }
+    if (on) {
+      if (slot.dataset.loaded === "1") { return; }
+      slot.dataset.loaded = "1";
+      slot.innerHTML =
+        '<iframe class="video-frame" src="https://www.youtube-nocookie.com/embed/iSYeGJ6OnGU?rel=0"\n' +
+        '        title="MultiLLM Launch Trailer" loading="lazy"\n' +
+        '        referrerpolicy="strict-origin-when-cross-origin"\n' +
+        '        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"\n' +
+        '        allowfullscreen></iframe>';
+    } else if (slot.dataset.loaded === "1") {
+      slot.dataset.loaded = "0";
+      slot.innerHTML =
+        '<button class="video-gate" type="button">' +
+        '<span class="vg-play" aria-hidden="true">' +
+        '<svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>' +
+        "</span>" +
+        '<span class="vg-text">Trailer laden<small>Klicken erlaubt das Laden von YouTube</small></span>' +
+        "</button>";
+    }
+  }
 
   function showConsent() {
     var b = document.getElementById("consent-banner");
@@ -162,13 +231,20 @@
     if (!host) { return; }
     host.innerHTML =
       '<div class="consent-inner">' +
-        "<p>" +
-          'This site is hosted by GitHub, which records server log files (IP address, date, page, status). ' +
-          'Details in the <a href="' + LEGAL + '#privacy">privacy policy</a>.' +
-        "</p>" +
+        "<div class=" + '"consent-text"' + ">" +
+          "<p><b>Before you decide</b> this site loads nothing from a third party: " +
+            "no Google Fonts, no YouTube, only files that ship with this site.</p>" +
+          "<p><b>After &bdquo;Accept all&rdquo;</b> Google Fonts load and the YouTube " +
+            "video is loaded. Until then neither is requested.</p>" +
+          "<p class=" + '"consent-note"' + ">Visiting this site, your IP address is " +
+            "processed by GitHub Pages and logged for security. That happens " +
+            "independently of your choice and cannot be prevented by this banner.</p>" +
+          '<p class="consent-links">Details in the ' +
+            '<a href="' + LEGAL + '#privacy">privacy policy</a>.</p>' +
+        "</div>" +
         '<div class="consent-actions">' +
-          '<button class="btn ghost" id="consent-decline">Decline</button>' +
-          '<button class="btn accent" id="consent-accept">Accept</button>' +
+          '<button class="btn ghost" id="consent-decline">Necessary only</button>' +
+          '<button class="btn accent" id="consent-accept">Accept all</button>' +
         "</div>" +
       "</div>";
   }
@@ -270,10 +346,10 @@
 
   /* ---------------- Boot ---------------- */
 
+  buildConsent();
   buildTopbar();
   buildSidebar();
   buildFooter();
-  buildConsent();
   applyTheme(readTheme());
 
   var tf = document.getElementById("theme-foot");
@@ -290,13 +366,38 @@
     }
   } catch (e) {}
 
-  var narrow = window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
-  if (narrow) { hideConsent(); }
-  else { showConsent(); }
+  /* Consent: null = never decided, "all" = fonts + video, "necessary" =
+     local files only. Decided once, then remembered. */
+  var decision = readConsent();
+  applyFonts(decision === "all");
+  applyVideo(decision === "all");
+  if (decision) { hideConsent(); } else { showConsent(); }
+
   var acc = document.getElementById("consent-accept");
   var dec = document.getElementById("consent-decline");
-  if (acc) { acc.addEventListener("click", hideConsent); }
-  if (dec) { dec.addEventListener("click", hideConsent); }
+  if (acc) {
+    acc.addEventListener("click", function () {
+      writeConsent("all");
+      applyFonts(true);
+      applyVideo(true);
+      hideConsent();
+    });
+  }
+  if (dec) {
+    dec.addEventListener("click", function () {
+      writeConsent("necessary");
+      applyFonts(false);
+      applyVideo(false);
+      hideConsent();
+    });
+  }
+  /* Clicking the video placeholder without consent opens the banner
+     instead of loading anything. */
+  document.addEventListener("click", function (e) {
+    if (e.target && e.target.id === "video-gate" && readConsent() !== "all") {
+      showConsent();
+    }
+  });
 
   initScrollspy();
   initSearch();

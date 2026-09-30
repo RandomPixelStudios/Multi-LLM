@@ -7,10 +7,7 @@
   <meta name="description" content="Multi LLM – all LLM providers behind one OpenAI-compatible local API. Try the faithful app demo right here." />
   <title>Multi LLM – All LLM Providers. One API.</title>
   <link rel="icon" type="image/png" href="assets/logo.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=1.0.5" />
+  <link rel="stylesheet" href="styles.css?v=1.0.6" />
   <noscript><style>.topbar,.hero-title .ht-line-in,.dl-row,.appwin,.why-grid .why-card,.rv{opacity:1!important;transform:none!important;animation:none!important;transition:none!important}</style></noscript>
   <script>try{var p=JSON.parse(localStorage.getItem("ml-prefs"));if(p&&p.theme==="light"){document.documentElement.setAttribute("data-theme","light")}}catch(e){}</script>
 </head>
@@ -326,11 +323,16 @@
     <section class="video-section" id="trailer">
       <h2 class="section-title"><span class="lang-en">Watch the trailer.</span><span class="lang-de">Trailer ansehen.</span></h2>
       <div class="video-wrap">
-        <iframe class="video-frame" src="https://www.youtube-nocookie.com/embed/iSYeGJ6OnGU?rel=0"
-                title="MultiLLM Launch Trailer"
-                loading="lazy" referrerpolicy="strict-origin-when-cross-origin"
-                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowfullscreen></iframe>
+        <!-- Nothing is loaded from YouTube before consent. docs-common.js
+             replaces this button with the real player on "Accept all". -->
+        <div class="video-slot" id="video-slot" data-loaded="0">
+          <button class="video-gate" type="button" id="video-gate">
+            <span class="vg-play" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
+            </span>
+            <span class="vg-text">Load trailer<small>Allows YouTube to load</small></span>
+          </button>
+        </div>
       </div>
       <p class="demo-cap"><span class="lang-en">Two minutes on what Multi LLM does and why it exists.</span><span class="lang-de">Zwei Minuten darüber, was Multi LLM tut und warum es es gibt.</span></p>
     </section>
@@ -390,7 +392,7 @@
     </div>
   </footer>
 
-  <div class="consent hidden" id="consent-banner" role="region" aria-label="Privacy settings">
+  <div class="consent hidden" id="consent-banner" role="region" aria-label="Privacy settings"><div id="consent-slot"></div></div>
     <div class="consent-inner">
       <p><span class="lang-en">This site is hosted by GitHub, which records server log files (IP address, date, page, status). Details in the <a href="legal.html#privacy">privacy policy</a>.</span><span class="lang-de">Diese Seite wird bei GitHub gehostet, das Server-Logfiles speichert (IP-Adresse, Datum, Seite, Status). Details in der <a href="legal.html#privacy">Datenschutzerklärung</a>.</span></p>
       <div class="consent-actions">
@@ -400,6 +402,7 @@
     </div>
   </div>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="script.js?v=1.0.5"></script>
+  <script src="docs-common.js?v=15"></script>
+  <script src="script.js?v=1.0.6"></script>
 </body>
 </html>

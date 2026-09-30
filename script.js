@@ -1,6 +1,7 @@
 /* Multi LLM – Website V1: hero + faithful app demo (demo data only) */
 (function () {
   "use strict";
+
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
@@ -33,7 +34,6 @@
   var STR = {
     en: { title: "Multi LLM – All LLM Providers. One API.", desc: "Multi LLM – all LLM providers behind one OpenAI-compatible local API. Try the faithful app demo right here.",
       copyFail: "Copy failed", prefsSaved: "Preferences saved",
-      consentSaved: "Understood - nothing is stored on this device.", consentDeclined: "Nothing is stored on this device. GitHub writes the server logs before this page loads.",
       provDeleted: "Provider deleted", needAppProv: "You need the app to add providers – install the app to use this.",
       installProv: "Install the app to configure providers.", vmDeleted: "Virtual model deleted", nameReq: "Name is required",
       pickMember: "Pick at least one member", vmCreated: "Virtual model created", copied: "Copied to clipboard",
@@ -48,7 +48,6 @@
       exposeA: "Other devices can reach the API at: http://<your-pc-ip>:", exposeB: "/v1 (Windows Firewall may ask for permission once.)" },
     de: { title: "Multi LLM – Alle LLM-Provider. Eine API.", desc: "Multi LLM – alle LLM-Provider hinter einer OpenAI-kompatiblen lokalen API. Teste hier die originalgetreue App-Demo.",
       copyFail: "Kopieren fehlgeschlagen", prefsSaved: "Einstellungen gespeichert",
-      consentSaved: "Verstanden - auf diesem Gerät wird nichts gespeichert.", consentDeclined: "Auf diesem Gerät wird nichts gespeichert. GitHub schreibt die Server-Logs schon vor dem Laden dieser Seite.",
       provDeleted: "Provider gelöscht", needAppProv: "Du brauchst die App, um Provider hinzuzufügen – installiere die App.",
       installProv: "Installiere die App, um Provider zu konfigurieren.", vmDeleted: "Virtuelles Modell gelöscht", nameReq: "Name ist erforderlich",
       pickMember: "Wähle mindestens ein Mitglied", vmCreated: "Virtuelles Modell erstellt", copied: "In Zwischenablage kopiert",
@@ -155,35 +154,6 @@
   })();
 
   /* ================= Consent for server logs (GitHub Pages) =================
-     A bottom banner, not a modal: the page stays usable and dark while the
-     visitor decides. It shows on every visit and stores nothing - the server
-     logs exist whether we remember a choice or not, so a stored "accepted"
-     would overstate what actually happened. */
-  function showConsent() {
-    var b = $("#consent-banner");
-    if (!b) return;
-    b.classList.remove("hidden");
-    document.body.classList.add("consent-open");
-  }
-  function hideConsent() {
-    var b = $("#consent-banner");
-    if (!b) return;
-    b.classList.add("hidden");
-    document.body.classList.remove("consent-open");
-  }
-  (function bootConsent() {
-    // The banner shows on every visit, on every screen size. Nothing is
-    // written to storage: there is no "already decided" state to remember,
-    // so there is nothing to withdraw either. The footer button is dropped -
-    // with no stored decision there is nothing left to reopen.
-    var acc = $("#consent-accept"), dec = $("#consent-decline");
-    if (acc) acc.addEventListener("click", function () { hideConsent(); toast(T("consentSaved")); });
-    // Declining cannot stop the server logs - GitHub records them before any
-    // page loads. We say so instead of pretending the choice changes anything.
-    if (dec) dec.addEventListener("click", function () { hideConsent(); toast(T("consentDeclined")); });
-    showConsent();
-  })();
-
 
   /* ================= Demo state ================= */
   var LOGOS = { "OpenAI": "openai.png", "Anthropic": "anthropic.png", "DeepSeek": "deepseek.png", "Ollama (Local)": "ollama.png", "Kilo Gateway": "kilo.ico", "OpenCode Zen": "opencode.png", "Groq": "groq.png", "Gemini": "gemini.png", "OpenRouter": "openrouter.png", "Mistral AI": "mistral.png" };
