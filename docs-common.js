@@ -236,21 +236,35 @@
     if (!host) { return; }
     host.innerHTML =
       '<div class="consent-inner">' +
-        "<div class=" + '"consent-text"' + ">" +
-          "<p><b>Before you decide</b> this site loads nothing from a third party: " +
-            "no Google Fonts, no YouTube, only files that ship with this site.</p>" +
-          "<p><b>After &bdquo;Accept all&rdquo;</b> Google Fonts load and the YouTube " +
-            "video is loaded. Until then neither is requested.</p>" +
-          "<p class=" + '"consent-note"' + ">Visiting this site, your IP address is " +
-            "processed by GitHub Pages and logged for security. That happens " +
-            "independently of your choice and cannot be prevented by this banner.</p>" +
-          '<p class="consent-links">Details in the ' +
-            '<a href="' + LEGAL + '#privacy">privacy policy</a>. You can change ' +
-            'this decision at any time via &ldquo;Privacy settings&rdquo; in the footer.</p>' +
+        '<div class="consent-text">' +
+          '<p><b class="lang-en">Before you decide</b><b class="lang-de">Bevor Sie entscheiden</b> ' +
+            '<span class="lang-en">this site loads nothing from a third party: no Google Fonts, ' +
+              'no YouTube, only files that ship with this site.</span>' +
+            '<span class="lang-de">lädt diese Seite nichts von Dritten: keine Google Fonts, ' +
+              'kein YouTube, nur Dateien, die mit dieser Site ausgeliefert werden.</span></p>' +
+          '<p><b class="lang-en">After &bdquo;Accept all&rdquo;</b><b class="lang-de">Nach &bdquo;Alle akzeptieren&rdquo;</b> ' +
+            '<span class="lang-en">Google Fonts load and the YouTube video is loaded. ' +
+              'Until then neither is requested.</span>' +
+            '<span class="lang-de">werden Google Fonts und das YouTube-Video geladen. ' +
+              'Bis dahin wird nichts davon abgerufen.</span></p>' +
+          '<p class="consent-note"><span class="lang-en">Visiting this site, your IP address is ' +
+              'processed by GitHub Pages and logged for security. That happens independently ' +
+              'of your choice and cannot be prevented by this banner.</span>' +
+            '<span class="lang-de">Beim Besuch dieser Seite wird Ihre IP-Adresse von GitHub Pages ' +
+              'verarbeitet und zu Sicherheitszwecken protokolliert. Das geschieht unabhängig von Ihrer ' +
+              'Wahl und kann durch dieses Banner nicht verhindert werden.</span></p>' +
+          '<p class="consent-links"><span class="lang-en">Details in the ' +
+            '<a href="' + LEGAL + '#privacy">privacy policy</a>. You can change this decision at ' +
+            'any time via &ldquo;Privacy settings&rdquo; in the footer.</span>' +
+            '<span class="lang-de">Details in der <a href="' + LEGAL + '#privacy">Datenschutzerklärung</a>. ' +
+            'Sie können diese Entscheidung jederzeit über &bdquo;Datenschutzeinstellungen&rdquo; ' +
+            'in der Fußzeile ändern.</span></p>' +
         "</div>" +
         '<div class="consent-actions">' +
-          '<button class="btn ghost" id="consent-decline">Necessary only</button>' +
-          '<button class="btn accent" id="consent-accept">Accept all</button>' +
+          '<button class="btn ghost" id="consent-decline">' +
+            '<span class="lang-en">Necessary only</span><span class="lang-de">Nur notwendige</span></button>' +
+          '<button class="btn accent" id="consent-accept">' +
+            '<span class="lang-en">Accept all</span><span class="lang-de">Alle akzeptieren</span></button>' +
         "</div>" +
       "</div>";
   }
