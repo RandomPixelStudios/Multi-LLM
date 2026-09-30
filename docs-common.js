@@ -95,6 +95,10 @@
     try { localStorage.setItem(CONSENT_KEY, value); } catch (e) {}
   }
 
+  function clearConsent() {
+    try { localStorage.removeItem(CONSENT_KEY); } catch (e) {}
+  }
+
   /* Injects the font stylesheet only after consent, and removes it again
    * when the visitor switches back to necessary-only. */
   function applyFonts(on) {
@@ -223,6 +227,7 @@
           '<a href="' + LEGAL + '#privacy">Privacy</a>' +
           '<a href="' + LEGAL + '#terms">Terms</a>' +
         "</nav>" +
+        '<button type="button" class="foot-consent" id="foot-consent">Privacy settings</button>' +
       "</div>";
   }
 
@@ -240,7 +245,8 @@
             "processed by GitHub Pages and logged for security. That happens " +
             "independently of your choice and cannot be prevented by this banner.</p>" +
           '<p class="consent-links">Details in the ' +
-            '<a href="' + LEGAL + '#privacy">privacy policy</a>.</p>' +
+            '<a href="' + LEGAL + '#privacy">privacy policy</a>. You can change ' +
+            'this decision at any time via &ldquo;Privacy settings&rdquo; in the footer.</p>' +
         "</div>" +
         '<div class="consent-actions">' +
           '<button class="btn ghost" id="consent-decline">Necessary only</button>' +
@@ -398,6 +404,25 @@
       showConsent();
     }
   });
+
+  /* A stored consent has to stay withdrawable. The footer button clears the
+     decision and reopens the banner, so switching back to "necessary only"
+     is possible at any time - and, if it was "accept all", the fonts and the
+     video go away again on the spot instead of after the next reload. */
+  var reopen = document.getElementById("foot-consent");
+  if (reopen) {
+    reopen.addEventListener("click", function () {
+      var wasAll = readConsent() === "all";
+      clearConsent();
+      if (wasAll) {
+        applyFonts(false);
+        applyVideo(false);
+      }
+      showConsent();
+      var first = document.getElementById("consent-accept");
+      if (first) { first.focus(); }
+    });
+  }
 
   initScrollspy();
   initSearch();
