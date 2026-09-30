@@ -1,0 +1,620 @@
+[
+ {
+  "page": "getting-started.html",
+  "id": "installation",
+  "title": "Installation",
+  "text": "Installation Multi LLM ships as a ready-made package per platform. Nothing has to be compiled. Grab the file from GitHub Releases . Windows Download multi-llm_<VERSION>_x64_en-US.msi or the setup.exe next to it. Run the installer. There is nothing to configure during setup. Start Multi LLM from the Start menu. The .exe is the fallback Use the NSIS .exe if the MSI does not fit your setup, for example on an older Windows or an unmanaged machine. Linux Three package formats ship. Pick whichever matches your distribution: File Distributions Install .deb Debian, Ubuntu, Mint, Pop!_OS sudo apt insta"
+ },
+ {
+  "page": "getting-started.html",
+  "id": "first-run",
+  "title": "First launch",
+  "text": "First launch Multi LLM keeps every API key on your own machine, so it starts with a single question: who is using it? Accounts are local. There is no sign-up, no e-mail address, no external login. Create a user Enter a username and a password of at least ten characters. That account is the first one and automatically becomes the admin. Add more accounts later from the user manager, or from the login screen. Each one gets its own providers, models, API key, usage history and personal port. Add a provider Open Providers and add a provider. The picker lists every supported service; you supply the"
+ },
+ {
+  "page": "getting-started.html",
+  "id": "verify",
+  "title": "Verify it works",
+  "text": "Verify it works Confirm the proxy answers before you wire up a tool. Open API → Client config snippets — the app shows a ready command for curl, Node, Go, PowerShell, Bash, Python, Java and jq. With curl Paste your key from API → API Keys : curl http://localhost:5000/v1/models \\ -H \"Authorization: Bearer YOUR_LOCAL_KEY\" A JSON list of every enabled model comes back. If you get invalid_api_key , the key is wrong; if you get no models enabled , a provider exists but all its models are switched off. With a completion request curl http://localhost:5000/v1/chat/completions \\ -H \"Authorization: Bear"
+ },
+ {
+  "page": "getting-started.html",
+  "id": "three-values",
+  "title": "The three values",
+  "text": "The three values Any tool that speaks the OpenAI API needs three things. That is the entire integration — no plugin, no SDK change, no re-training of muscle memory. Base URL http://localhost:5000/v1 The port follows the API panel if you changed it. Some tools want the URL without /v1 — check the tool's own field label. API key Your local key from API → API Keys . It authenticates you to your own proxy, not to a provider. Provider keys stay behind it and are never sent to the tool. Model Any enabled model name, or a virtual model. Use multillm to let the proxy choose. Use an exact model id when"
+ },
+ {
+  "page": "getting-started.html",
+  "id": "troubleshooting",
+  "title": "If something fails",
+  "text": "If something fails These cover most first-run problems. The FAQ has more, and troubleshooting goes deeper. The port is already in use Another program holds 5000 . Change the port in API → Port ; every tool that points at localhost:5000 has to follow. A provider shows no models The key is wrong, the base URL does not match the provider's format, or the provider is unreachable from this machine. Use Test on the provider card — the result dialog names the reason, for example an HTTP 401 for a bad key. A tool says \"connection refused\" The proxy is not running. Check that the Multi LLM window shows"
+ },
+ {
+  "page": "connect.html",
+  "id": "field-names",
+  "title": "Field names differ per tool",
+  "text": "Field names differ per tool Almost every tool has the same three values, but the names are not the same everywhere. This is the single most common reason a tool keeps talking to the real OpenAI after you thought you pointed it at Multi LLM: the tool ignores an unrecognised field and falls back to its default endpoint. Tool family Base URL field Key field Model field Continue, Cline, Roo, Kilo apiBase / openAiBaseUrl apiKey / openAiApiKey model / openAiModelId Cursor, Windsurf baseUrl apiKey model Zed api_url api_key model Claude Code ANTHROPIC_BASE_URL — no /v1 ANTHROPIC_AUTH_TOKEN ANTHROPIC_M"
+ },
+ {
+  "page": "connect.html",
+  "id": "by-tool",
+  "title": "Step by step",
+  "text": "Step by step Every entry gives the exact path to the setting, a ready-to-paste configuration, and what that particular tool does with your input. The placeholder YOUR_LOCAL_KEY is the key from API → API Keys . Editor Cline Cline Where: The sidebar gear icon › API Provider › OpenAI Compatible { \"provider\": \"openai\", \"openAiBaseUrl\": \"http://localhost:5000/v1\", \"openAiApiKey\": \"YOUR_LOCAL_KEY\", \"openAiModelId\": \"multillm\" } Cline uses openAiBaseUrl and openAiApiKey . Both must be set; an empty base URL falls back to the official OpenAI endpoint. Continue Continue Where: Config gear › Models › Ad"
+ },
+ {
+  "page": "connect.html",
+  "id": "common-mistakes",
+  "title": "Common mistakes",
+  "text": "Common mistakes It still reaches api.openai.com The base URL field name does not match. Check the table above for your tool. A tool with an unrecognised key silently uses its default endpoint, so requests go out to the real provider and your local key is rejected there — which looks like a bad key rather than a wrong setting. Connection refused Multi LLM is not running, or the port differs. The API panel shows the exact URL to use. On Windows the firewall asks once for permission to open it; declining that leaves the proxy unreachable from other tools. It works locally, not from a container In"
+ },
+ {
+  "page": "connect.html",
+  "id": "cline",
+  "title": "Cline",
+  "text": "Cline Cline Where: The sidebar gear icon › API Provider › OpenAI Compatible { \"provider\": \"openai\", \"openAiBaseUrl\": \"http://localhost:5000/v1\", \"openAiApiKey\": \"YOUR_LOCAL_KEY\", \"openAiModelId\": \"multillm\" } Cline uses openAiBaseUrl and openAiApiKey . Both must be set; an empty base URL falls back to the official OpenAI endpoint. Continue Continue Where: Config gear › Models › Add a model › OpenAI { \"models\": [ { \"title\": \"multillm\", \"provider\": \"openai\", \"model\": \"multillm\", \"apiBase\": \"http://localhost:5000/v1\", \"apiKey\": \"YOUR_LOCAL_KEY\" } ] } Continue names the field apiBase , not baseUrl"
+ },
+ {
+  "page": "concepts.html",
+  "id": "concepts-flow",
+  "title": "How a request flows",
+  "text": "How a request flows Multi LLM sits between your tool and the provider. Nothing leaves your machine except the request itself, and only to the provider you selected. Your tool sends a request Standard OpenAI shape, to http://localhost:5000/v1/chat/completions with your local key. From Multi LLM's point of view it looks the same as any other client. The model name is resolved If it is a real model id, that model is used. If it is a virtual model such as multillm , the routing strategy picks a concrete one from its bundle. Health and circuit breakers are checked Providers with an open circuit bre"
+ },
+ {
+  "page": "concepts.html",
+  "id": "concepts-compat",
+  "title": "OpenAI compatibility",
+  "text": "OpenAI compatibility Multi LLM relays the standard OpenAI surfaces. Anything outside that list is refused rather than passed through blindly, so a typo cannot turn into an unexpected request to a provider. Endpoint Purpose POST /v1/chat/completions Chat, the common case POST /v1/completions Legacy text completion POST /v1/responses OpenAI Responses API POST /v1/embeddings Embeddings POST /v1/moderations Content moderation GET /v1/models List enabled models POST /v1/images/* Image endpoints, relayed POST /v1/audio/* Audio endpoints, relayed Format translation Your tool only ever speaks OpenAI. "
+ },
+ {
+  "page": "concepts.html",
+  "id": "concepts-streaming",
+  "title": "Streaming",
+  "text": "Streaming Set \"stream\": true and the answer arrives token by token. The chunk format is the OpenAI one, whatever the provider actually does internally. What changes between providers Streaming is where provider differences show up most, because every provider invented its own event shape: OpenAI-style providers emit incremental delta chunks. Anthropic emits typed events and content blocks that get built up rather than appended. Some providers send keep-alive or usage-only chunks with no content. Multi LLM normalises all of that into one stream your tool can read. The cost is a small delay on t"
+ },
+ {
+  "page": "concepts.html",
+  "id": "concepts-tokens",
+  "title": "Tokens and context",
+  "text": "Tokens and context Prompt tokens Everything in messages counts: system prompts, history, tool definitions and the current user message. A long conversation grows the prompt every turn, which is usually where the cost goes. Completion tokens What the model generated. Controlled by max_tokens and temperature — a high maximum does not cost more if the model stops early. Context length Each model has a limit, shown in the model card as 128K and similar. Exceeding it returns a provider error; the proxy does not silently truncate, because a truncated conversation produces a wrong answer that looks l"
+ },
+ {
+  "page": "concepts.html",
+  "id": "concepts-quality",
+  "title": "Quality signals",
+  "text": "Quality signals Multi LLM measures latency and availability, and it shows both per provider. It cannot tell you which model is better — that depends entirely on your task. The health dot Dot Meaning Green Probed within the last 15 minutes, responding Yellow No recent probe, or never checked — the last known state, possibly stale Red Failing, or the circuit breaker is open Probes run against the provider's own model list. They are cheap and periodic, not on every request. Latency Measured in milliseconds per request, averaged over a rolling window. It is the metric the latency and fastest routi"
+ },
+ {
+  "page": "concepts.html",
+  "id": "concepts-routing",
+  "title": "Why routing matters",
+  "text": "Why routing matters A single model name per request means you commit to one provider for every task. Routing turns that into a bundle that adapts. Virtual models A virtual model is a named group of real models plus a strategy. Asking for multillm asks the strategy, not a specific provider. Two things fall out of this. Failover happens without you noticing, because a failing provider is simply not chosen. And you can change strategy later without changing a single line in your tool. Starred models Starring a model multiplies its selection weight by four under weighted . It is a blunt instrument"
+ },
+ {
+  "page": "concepts.html",
+  "id": "concepts-privacy",
+  "title": "What stays where",
+  "text": "What stays where Worth being precise about, since the whole point of a local proxy is that data does not travel. What Where it goes Your prompts and the model's answers To the provider you chose, and nowhere else Provider API keys Your local profile, compared as hashes, never sent to a tool Usage history Your local profile, per user Your tool's local key Stays between the tool and the proxy; the proxy never logs it Update check One request to GitHub for a version file, no identifying data Multi LLM has no account, no telemetry and no analytics. The only network traffic is your request to the p"
+ },
+ {
+  "page": "concepts.html",
+  "id": "glossary",
+  "title": "Glossary",
+  "text": "Glossary Provider One configured service with a base URL, a key and a list of models. OpenAI, Anthropic, Ollama and 90 others are all providers. Virtual model A named bundle of real models plus a routing strategy. Asking for it asks the strategy which model to use. Routing strategy The rule that picks a model from a bundle: weighted, round_robin, priority, latency, fastest or sticky. Health check A periodic probe against a provider to see whether it answers. Produces the coloured dot on the provider card. Circuit breaker After repeated failures a provider is taken out of rotation for a cooldow"
+ },
+ {
+  "page": "configuration.html",
+  "id": "config-api",
+  "title": "Endpoint, port and key",
+  "text": "Endpoint, port and key The API panel holds the values every tool needs. Changes save automatically; there is no save button. Base URL and port The proxy listens on 5000 by default. Change the port and every tool that points at localhost:5000 has to follow. Pick something above 1024 to avoid privileged ports. http://localhost:5000/v1 The API tab shows the full URL, ready to copy. Enabled Turns the HTTP server off without closing the window. Nothing is reachable while it is off — useful if you only want the UI open. API key Your local key, shown in the API tab. It authenticates a tool to your pr"
+ },
+ {
+  "page": "configuration.html",
+  "id": "config-expose",
+  "title": "Reaching it from other machines",
+  "text": "Reaching it from other machines By default the proxy only accepts connections from the same machine. That is the right setting for a laptop. Expose to LAN Listens on all interfaces, so other devices on the network can connect. The API tab then shows a URL with your machine's LAN address. Only do this on a network you trust Anyone on the network who has your local key can use your provider keys and spend your money. On Wi-Fi in a café, a hotel, or any shared network, leave this off and use a tunnel instead. The Windows firewall prompt The first time you switch it on, Windows asks for permission"
+ },
+ {
+  "page": "configuration.html",
+  "id": "config-providers",
+  "title": "Providers and health",
+  "text": "Providers and health Adding a provider Providers › Add provider opens a picker with every supported service. Pick one, paste the key from that provider's own dashboard, and the model list is fetched for you. A local engine such as Ollama needs no key: give it the base URL ( http://localhost:11434/v1 ) and leave the key empty. Enable counts Each card shows enabled / total models . A model only receives requests when it is enabled. Having four models configured and none enabled is a common cause of \"no models\" errors. The health dot Green means a probe succeeded recently, yellow means no recent "
+ },
+ {
+  "page": "configuration.html",
+  "id": "config-virtual",
+  "title": "Virtual models",
+  "text": "Virtual models A virtual model is a named group of real models plus a strategy. Requesting the group asks the strategy which member to use. The built-in bundle multillm exists from the first start, contains every enabled model and uses weighted . Editing it changes what multillm means for every tool that uses it. Creating your own Virtual Models › Create opens a dialog: a name, a strategy, and a checkbox list of the models to include. The name is what tools will request. A bundle can only pick from its members Disabling a model removes it from every bundle that contains it. If a tool then repo"
+ },
+ {
+  "page": "configuration.html",
+  "id": "config-routing",
+  "title": "Routing strategies",
+  "text": "Routing strategies Set per virtual model. This is the strategy the bundle uses to pick. Strategy Picks Use when Weighted At random, starred models four times as often Default. Steer by starring. Round robin Even rotation, no randomness You want every model used equally. Priority First healthy model in provider order You have a clear favourite. Latency Lowest average response time Speed matters more than consistency. Fastest Latency weighted by current health Speed, but avoids a flaky provider. Sticky The same model for a whole conversation Multi-turn work; reads better. Sticky needs a conversa"
+ },
+ {
+  "page": "configuration.html",
+  "id": "config-reliability",
+  "title": "Reliability and failover",
+  "text": "Reliability and failover Circuit breaker After a set number of consecutive failures a provider is taken out of rotation for a cooldown period, then probed back in. This stops every single request from retrying a provider that is down. When the breaker opens, the routing simply skips that provider. A request that would have failed takes a moment longer and succeeds instead. Health history Multi LLM keeps a short history of probe results per provider, shown on the card. It refreshes at most once a minute, so the numbers do not flicker while you watch. Failover budget How many alternative models "
+ },
+ {
+  "page": "configuration.html",
+  "id": "config-compression",
+  "title": "Token compression",
+  "text": "Token compression Removes filler from your prompt before it leaves the machine. Providers bill by token, and long instructions carry a lot of words that change nothing. Strength Level Effect 1–3 Mild. Only obvious filler: \"please\", \"I would like to\". 4–6 Noticeable savings on chatty prompts. 7–10 Aggressive. Test before relying on it. What is never touched Code blocks, including fenced sections JSON, in any form Anything that looks like a literal or an identifier The system prompt's role markers These are exactly the parts where a \"harmless\" rewrite changes meaning. The compressor skips them r"
+ },
+ {
+  "page": "configuration.html",
+  "id": "config-cache",
+  "title": "Response cache",
+  "text": "Response cache Identical non-streaming requests are answered from a local store instead of being forwarded. Same prompt, same model, same parameters means the same answer anyway. What is cached Non-streaming chat and completion requests. Streaming is never cached — replaying a recorded stream looks like a hang. Time to live How long an entry stays valid. Short is safer: models change behind the same name. Max entries Upper bound on stored responses, oldest evicted first. Keeps memory use predictable. Good for repetition, wrong for freshness Use it for fixed instructions you send repeatedly. Do"
+ },
+ {
+  "page": "configuration.html",
+  "id": "config-app",
+  "title": "Startup and updates",
+  "text": "Startup and updates Start with Windows Launches the proxy when you sign in, so tools work before you open the window. Windows only; on Linux use your desktop session's autostart. Check for updates automatically On start-up, the app fetches a small version file. That request reaches GitHub, so your IP address is visible to them. Switch it off to make no outbound request at all; the manual check stays available. Check for updates Checks once, on demand, and shows the result. Nothing is downloaded automatically — if a newer version exists, you get a link. Update server Where the version file is f"
+ },
+ {
+  "page": "configuration.html",
+  "id": "config-data",
+  "title": "Data, export and import",
+  "text": "Data, export and import Export config Writes your providers, models and settings to a JSON file. A checkbox decides whether API keys go in. Keys are secrets A config exported with keys is a plain text file containing your provider credentials. Export without them unless the destination is somewhere you fully control. Import config Merges a previously exported file. Existing entries with the same name are updated rather than duplicated, so importing an older file can roll your configuration back. Export usage Your token history as JSON, for your own accounting. Contains no keys. Where files liv"
+ },
+ {
+  "page": "configuration.html",
+  "id": "config-legal",
+  "title": "Legal texts",
+  "text": "Legal texts Imprint, privacy policy and terms are available in the app under Settings › About & legal , with three tabs to switch between them. The same texts are online on the legal page . They cover what the app stores, what leaves your machine, and where the liability boundaries are. Read the compatibility clause before deploying Section 5 limits liability for compatibility and environment failures — OS updates, missing libraries, firewalls, occupied ports. Worth knowing before you run this on someone else's machine."
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-providers",
+  "title": "Set up a provider",
+  "text": "Set up a provider One provider, one key, one working request. Repeat per service. Get the key From the provider's own dashboard. Keep the page open — you will need the model list later. Add it in Multi LLM Providers › Add provider , pick the service from the list, paste the key. The base URL and format are filled in for you. Test it Use the test button on the card. Success reports the latency; failure names the cause. Enable what you want Only enabled models receive requests. Turn on the ones you actually use — a smaller list routes faster and fails over less often. Confirm through the proxy R"
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-local",
+  "title": "Local engines",
+  "text": "Local engines A local model needs no key and no network — the most private option and the one that keeps working when the internet does not. Ollama Start it, then add the provider in Multi LLM: Base URL: http://localhost:11434/v1 API key: (leave empty) Format: OpenAI Ollama serves an OpenAI-compatible API on port 11434. Pull a model first with ollama pull llama3 , then refresh in the provider editor so it appears. LM Studio Base URL: http://localhost:1234/v1 API key: (leave empty) Start the local server in LM Studio before adding it. The port is 1234 unless you changed it. vLLM vllm serve mist"
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-proxy",
+  "title": "HTTPS reverse proxy",
+  "text": "HTTPS reverse proxy Needed only if a tool refuses plain HTTP. Caddy is the shortest configuration; nginx is the one you likely already run. With Caddy llm.example.com { reverse_proxy localhost:5000 } Caddy fetches and renews a certificate on its own. The tool then uses https://llm.example.com/v1 . With nginx server { listen 443 ssl http2; server_name llm.example.com; ssl_certificate /etc/letsencrypt/live/llm.example.com/fullchain.pem; ssl_certificate_key /etc/letsencrypt/live/llm.example.com/privkey.pem; location / { proxy_pass http://127.0.0.1:5000; proxy_http_version 1.1; proxy_set_header Ho"
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-onboarding",
+  "title": "Team onboarding",
+  "text": "Team onboarding For a small group on one machine or a server. A checklist you can hand over as-is. Install and create the first account The first account is automatically the admin. It can see and manage the user list. Decide where this runs Someone's desktop, or a server via Docker . A desktop works for a team that sits together; a server for anyone remote. Add provider keys Either the admin configures all providers centrally, or each user adds their own keys. The first is easier to manage; the second keeps costs attributable. Give each member a key Under API › API Keys , create a separate ke"
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-costs",
+  "title": "Cut token costs",
+  "text": "Cut token costs Two levers, in order of effect. 1. Find the expensive part The usage panel ranks models by tokens, with cost estimates. One runaway conversation is usually most of the bill. Look there first before changing anything. 2. Compress the prompts Settings › Token compression , strength 4 to 6. See compression for what it does and does not touch. 3. Pin cheap models to cheap work Give a cheap model its own bundle and point a tool or a task at it explicitly, instead of letting multillm pick randomly for everything. What does not save anything Shorter max_tokens only caps a cost you wer"
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-compression",
+  "title": "Compression in practice",
+  "text": "Compression in practice What actually changes at each strength level on a real prompt. Please kindly analyse the following text in detail and explain it to me. TEXT Please analyse the following text and explain it. TEXT Level 1 to 3 removes courtesy padding. The instruction itself is intact. def load(path): with open(path) as f: return json.load(f) Code is never rewritten, at any level. Same for JSON, fenced blocks and anything that looks like a literal. When to turn it off Prompts where exact wording matters, for example a legal or medical question you need reproduced faithfully. When you are"
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-strategy",
+  "title": "Choosing a strategy",
+  "text": "Choosing a strategy One question decides it: do you care more about a single good answer or about it always being available? If you… Use Want the best model available right now latency or fastest Want predictable behaviour priority Want every model used fairly round_robin Have long conversations sticky Are not sure weighted and star what works Starting with weighted Run a week, look at the usage panel, star the models you were happy with. That produces a better mix than any theoretical default, because it is based on your actual tasks. When latency is the wrong choice latency optimises for the"
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-recipes",
+  "title": "Bundle recipes",
+  "text": "Bundle recipes Four bundles worth copying. Create each one under Virtual Models › Create . fast Strategy fastest . Members: whichever low-latency models you have. Good for autocomplete, quick edits, anything where you would rather correct a mediocre answer than wait for a good one. cheap Strategy priority . Members: your smallest and cheapest model first, anything else second. This is the one to point at for bulk work. private Strategy round_robin . Members: local engines only. Nothing leaves the machine, which makes this the bundle for sensitive input. balanced Strategy weighted , best model "
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-tiers",
+  "title": "Bundle tiers",
+  "text": "Bundle tiers When one bundle cannot serve everything, split by quality and point each task at its tier. Group your models by tier Frontier, mid-tier, small. The names are yours; the point is that each group is a bundle. Give each a strategy quality gets priority with the best model first. standard and draft get fastest . Map tasks to tiers Code completion to draft , everyday chat to standard , hard problems to quality . The tier names in your tool's model field are the only thing that changes. Adjust as you learn If a tier is slower or more expensive than expected, change the strategy rather t"
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-migration",
+  "title": "Migrating from direct use",
+  "text": "Migrating from direct use If you currently call providers directly, the change is mechanical. Install and add your providers Add what you already have configured, with the same keys. Swap the base URL Every tool: https://api.openai.com/v1 becomes http://localhost:5000/v1 . Nothing else changes at first. Swap the key Use your local key. Provider keys stay behind the proxy — that is the point. Keep using the same model names Exact ids work unchanged, so this step is behaviour-preserving. Move to multillm only once you trust it. Then start routing Swap in a bundle name where you want automatic ch"
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-troubleshoot",
+  "title": "Troubleshooting",
+  "text": "Troubleshooting Work in this order. It goes from the cheap check to the invasive one. 1. Is the proxy running? The status line at the top of the window. Grey means stopped; red carries a message. curl http://localhost:5000/v1/models is the same check from outside. 2. Does the provider work? Test button on the provider card. This isolates the problem to one side: the proxy or the provider. 3. Is the key right in the tool? Copy it again from API › API Keys . A key regenerated earlier has already stopped working. 4. Is the base URL field name right? Tools disagree about the name. See the field na"
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-security",
+  "title": "Security",
+  "text": "Security The threat model Multi LLM holds your provider keys. The realistic risks are: someone else using your proxy, and a provider key leaking out of the app. Keep it on localhost The default. Anyone who reaches your proxy with your key spends your money. Expose to LAN only on a network you control. Separate keys per tool and per person Extra keys can be limited to specific models and to requests per minute. One key per tool means you can revoke a single integration without breaking everything. Accounts are local Passwords are stored as argon2id hashes, not readable text. Comparison takes th"
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-backup",
+  "title": "Backup",
+  "text": "Backup Three things are worth keeping: your configuration, your usage history, and your accounts. Configuration Settings › Data › Export config , keys excluded . That file is the whole setup minus the secrets, and it is what you restore on a new machine. Usage history Export usage for accounting. It is not part of the configuration export. Accounts and keys These live only in your profile directory and are not covered by the config export. Copy the directory itself, while the app is closed. Where it is Your user profile directory, with one folder per user. Exact paths per platform are in the d"
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-sharing",
+  "title": "Sharing with a team",
+  "text": "Sharing with a team Two approaches, depending on whether members bring their own keys. Shared keys The admin configures providers once. Everyone uses the same setup, and the cost is shared. Simple, and you cannot attribute usage to a person without giving each one a key. Per-member keys Each member adds their own providers. Costs are theirs, and you cannot see them. The right choice when people pay for their own accounts. Handing over a setup Export a config with keys excluded . Send the file, plus the page for their tool . They import it, then add their own keys. Give each member their own lo"
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-update",
+  "title": "Updating",
+  "text": "Updating Check, then install manually Settings › App › Check for updates reports a new version and gives you the link. Download the package for the platform, install over the old version, restart. Before you update Export your config, without keys. Note your version, in case you need to go back. What changes between versions Beta software means the settings format can change. An import that looks wrong is usually a renamed field, not lost data — check the release notes first. Going back Install the older package over the newer one. Your configuration lives in your profile and is only read by t"
+ },
+ {
+  "page": "guides.html",
+  "id": "guide-newpc",
+  "title": "Moving machines",
+  "text": "Moving machines On the old machine Export config without keys, and note your version. Install on the new one Same or newer version. Start it once so the profile directory exists, then quit. Import Settings › Data › Import config. The same import that reads it on the old machine restores it here. Re-enter provider keys Deliberately not in the export. Copy them from the providers' own dashboards. Re-point your tools Same URL if the port matches, otherwise the new one. Nothing else changes. Accounts need the profile folder Config import does not bring accounts across. On the new machine, create t"
+ },
+ {
+  "page": "api.html",
+  "id": "api-auth",
+  "title": "Authentication",
+  "text": "Authentication Every request needs your local key. It authenticates you to your own proxy; it is not a provider credential. Authorization: Bearer YOUR_LOCAL_KEY Without a valid key the response is 401 with invalid_api_key . Extra keys may be limited to specific models or to a requests-per-minute ceiling; exceeding the ceiling gives 429 . Your provider keys are never involved Your tool authenticates with the local key. Multi LLM uses your provider keys on the far side, and neither key is visible to the other."
+ },
+ {
+  "page": "api.html",
+  "id": "api-inference",
+  "title": "Inference endpoints",
+  "text": "Inference endpoints Standard OpenAI paths under /v1 . Anything outside this list is refused rather than relayed blindly. Method Path Body POST /v1/chat/completions model , messages , optional stream , temperature , max_tokens , tools POST /v1/completions model , prompt POST /v1/responses model , input POST /v1/embeddings model , input POST /v1/moderations input GET /v1/models — POST /v1/images/* relayed to the provider POST /v1/audio/* relayed to the provider The request is translated to whatever the resolved provider speaks. A body that OpenAI accepts therefore works against an Anthropic or G"
+ },
+ {
+  "page": "api.html",
+  "id": "api-models",
+  "title": "Models",
+  "text": "Models GET /v1/models returns the ids your tools may request: { \"object\": \"list\", \"data\": [ { \"id\": \"multillm\", \"object\": \"model\", \"owned_by\": \"local\" }, { \"id\": \"gpt-4o\", \"object\": \"model\", \"owned_by\": \"openai\" } ] } The list contains enabled models plus the virtual models you created. Models that exist but are switched off appear only if All models is on in the API panel. Most tools do not call this at all — they use whatever you type into their model field. It is still useful for scripts and for troubleshooting."
+ },
+ {
+  "page": "api.html",
+  "id": "api-errors",
+  "title": "Error format",
+  "text": "Error format Errors follow the OpenAI shape, so SDKs that expect it work unchanged: { \"error\": { \"code\": \"invalid_api_key\", \"message\": \"Missing or invalid API key.\", \"type\": \"invalid_request_error\" } } HTTP code Meaning 400 invalid_request Malformed body, or a model the proxy cannot resolve 401 invalid_api_key Missing or wrong local key 404 model_not_found The model does not exist or is not enabled 404 not_found The path is not one of the relayed endpoints 429 rate_limit Extra key rate limit reached 502 upstream_error The provider failed; the message carries its reason 503 no_provider No healt"
+ },
+ {
+  "page": "api.html",
+  "id": "api-headers",
+  "title": "Headers and limits",
+  "text": "Headers and limits Request size 64 MB on /v1 , 8 MB on management endpoints. Stream timeout 20 seconds to first byte, then the connection stays open for the stream. Failed logins 10 per minute per IP, then a 60-second block. Key comparison Constant time, so a wrong key cannot be found by measuring. Request forwarding Your headers pass through to the provider unless they are proxy-specific. The Authorization header is the exception: it is replaced with the provider's own credential, and yours never leaves the machine."
+ },
+ {
+  "page": "api.html",
+  "id": "cb-basic",
+  "title": "Cookbook: a chat request",
+  "text": "Cookbook: a chat request curl http://localhost:5000/v1/chat/completions \\ -H \"Authorization: Bearer YOUR_LOCAL_KEY\" \\ -H \"Content-Type: application/json\" \\ -d '{ \"model\": \"multillm\", \"messages\": [ { \"role\": \"system\", \"content\": \"Answer in one sentence.\" }, { \"role\": \"user\", \"content\": \"What is a circuit breaker?\" } ], \"temperature\": 0.2 }' Lower temperature for factual questions, higher for open-ended ones. It is forwarded to the provider unchanged."
+ },
+ {
+  "page": "api.html",
+  "id": "cb-stream",
+  "title": "Cookbook: streaming",
+  "text": "Cookbook: streaming curl -N http://localhost:5000/v1/chat/completions \\ -H \"Authorization: Bearer YOUR_LOCAL_KEY\" \\ -H \"Content-Type: application/json\" \\ -d '{ \"model\": \"multillm\", \"messages\": [{\"role\": \"user\", \"content\": \"Write a haiku about proxies.\"}], \"stream\": true }' -N disables curl's own buffering. Without it the output still arrives, but in one piece at the end."
+ },
+ {
+  "page": "api.html",
+  "id": "cb-models",
+  "title": "Cookbook: list models",
+  "text": "Cookbook: list models curl -s http://localhost:5000/v1/models \\ -H \"Authorization: Bearer YOUR_LOCAL_KEY\" \\ | jq -r '.data[].id' Paste the output straight into a tool's model field. If a name is missing from this list, that tool cannot use it."
+ },
+ {
+  "page": "api.html",
+  "id": "cb-embed",
+  "title": "Cookbook: embeddings",
+  "text": "Cookbook: embeddings curl http://localhost:5000/v1/embeddings \\ -H \"Authorization: Bearer YOUR_LOCAL_KEY\" \\ -H \"Content-Type: application/json\" \\ -d '{ \"model\": \"text-embedding-3-small\", \"input\": \"Multi LLM routes every provider behind one endpoint.\" }' Embeddings bypass routing — the model is used exactly as named. They also bypass failover, because a partial vector is worse than none."
+ },
+ {
+  "page": "api.html",
+  "id": "cb-responses",
+  "title": "Cookbook: the Responses API",
+  "text": "Cookbook: the Responses API curl http://localhost:5000/v1/responses \\ -H \"Authorization: Bearer YOUR_LOCAL_KEY\" \\ -H \"Content-Type: application/json\" \\ -d '{ \"model\": \"multillm\", \"input\": \"Name three benefits of a local proxy.\" }' For tools written against OpenAI's newer Responses interface. The request is translated to whichever provider the bundle picks."
+ },
+ {
+  "page": "api.html",
+  "id": "cb-bundle",
+  "title": "Cookbook: choosing a model explicitly",
+  "text": "Cookbook: choosing a model explicitly Replace multillm in any of the above with: gpt-4o — exactly that provider's model, no routing cheap — your own bundle, strategy decides private — local models only Exact ids still fail over, because the circuit breaker applies to the provider regardless. Bundles fail over and choose."
+ },
+ {
+  "page": "api.html",
+  "id": "cb-node",
+  "title": "Cookbook: Node",
+  "text": "Cookbook: Node import OpenAI from \"openai\"; const client = new OpenAI({ baseURL: \"http://localhost:5000/v1\", apiKey: \"YOUR_LOCAL_KEY\", }); const stream = await client.chat.completions.create({ model: \"multillm\", messages: [{ role: \"user\", content: \"Explain failover in two sentences.\" }], stream: true, }); for await (const chunk of stream) { process.stdout.write(chunk.choices[0]?.delta?.content ?? \"\"); }"
+ },
+ {
+  "page": "api.html",
+  "id": "cb-python",
+  "title": "Cookbook: Python",
+  "text": "Cookbook: Python from openai import OpenAI client = OpenAI( base_url=\"http://localhost:5000/v1\", api_key=\"YOUR_LOCAL_KEY\", ) stream = client.chat.completions.create( model=\"multillm\", messages=[{\"role\": \"user\", \"content\": \"Explain failover in two sentences.\"}], stream=True, ) for chunk in stream: print(chunk.choices[0].delta.content or \"\", end=\"\", flush=True) There is nothing Multi-LLM-specific in either SDK. The three values are the whole integration."
+ },
+ {
+  "page": "api.html",
+  "id": "cb-jq",
+  "title": "Cookbook: jq",
+  "text": "Cookbook: jq curl -s http://localhost:5000/v1/chat/completions \\ -H \"Authorization: Bearer YOUR_LOCAL_KEY\" \\ -H \"Content-Type: application/json\" \\ -d '{\"model\":\"multillm\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}' \\ | jq -r '.choices[0].message.content' For shell scripts and health checks. Add | jq -r '.usage.total_tokens' to see the cost of one call."
+ },
+ {
+  "page": "docker.html",
+  "id": "docker-why",
+  "title": "Why the container",
+  "text": "Why the container The desktop app is one user on one machine. The container runs the same software in multi-user mode : one port, several accounts, each with its own providers, models, keys, usage history and personal port. When to use it A team, especially one that is not all in the same room. A server you want running whether or not someone is logged in. Any setup where you would otherwise hand around one provider key. What it does not have No desktop window. The tray icon needs a desktop session. Everything is managed through the web interface at http://localhost:5000 . A desktop app still "
+ },
+ {
+  "page": "docker.html",
+  "id": "docker-prereq",
+  "title": "Prerequisites",
+  "text": "Prerequisites Docker Engine with the Compose plugin. Nothing else: no Node, no Rust, no compilers. The repository, because the image is built from source. Host port 5000 free. A provider key, or a local engine reachable from the container. Check your setup docker --version docker compose version Both must answer. On Linux you may need to add yourself to the docker group to avoid sudo on every command."
+ },
+ {
+  "page": "docker.html",
+  "id": "docker-quick",
+  "title": "Quick start",
+  "text": "Quick start git clone -b Docker https://github.com/RandomPixelStudios/Multi-LLM.git cd Multi-LLM/docker docker compose up --build -d docker compose ps # \"healthy\" once the port is bound Open http://localhost:5000 . The first account you create becomes the admin. From another machine http://192.168.1.50:5000 Your host's LAN address, not localhost . See network and firewall . It does not start on reboot By design. After a restart, start it yourself: docker compose start See commands for the full set."
+ },
+ {
+  "page": "docker.html",
+  "id": "docker-compose",
+  "title": "The compose file",
+  "text": "The compose file Two files sit next to each other in docker/ . The compose file points at both, so the layout looks more spread out than it is. services: multillm: build: context: .. # the repository root, because the build needs the source dockerfile: docker/Dockerfile image: multillm:latest container_name: multillm ports: - \"5000:5000\" volumes: - multillm-data:/data environment: MULTI_LLM_DATA_DIR: /data MULTI_LLM_PORT: \"5000\" MULTI_LLM_EXPOSE: \"1\" MULTI_LLM_SERVER: \"1\" restart: \"no\" volumes: multillm-data: Line Why it is there context: .. The image builds the frontend and the Rust binary, s"
+ },
+ {
+  "page": "docker.html",
+  "id": "docker-users",
+  "title": "Users and keys",
+  "text": "Users and keys Creating accounts Two ways, both valid: At first start, from the login screen — the first account is the admin. Later, from the Users tab, visible to the admin only. Only a username and a password. No e-mail, no external login, no verification step. What each user gets Isolated Shared Providers and their keys The container and its port Models and virtual models Image and version API key, created automatically, never changes Resource limits Usage history and costs The user list, for the admin A personal port from 8123 upward Getting a user's key ./multillm/get-key.sh anna Prints "
+ },
+ {
+  "page": "docker.html",
+  "id": "docker-env",
+  "title": "Environment variables",
+  "text": "Environment variables Variable Default Effect MULTI_LLM_DATA_DIR /data Where everything is written MULTI_LLM_PORT 5000 Fixed; not changeable at runtime MULTI_LLM_EXPOSE 1 Bind all interfaces instead of localhost only MULTI_LLM_SERVER 1 Multi-user mode MULTI_LLM_USER_PORT_BASE 8123 First personal port per account MULTI_LLM_ALLOW_SIGNUP unset 1 allows registration without an admin session MULTI_LLM_COOKIE_SECURE unset 1 marks session cookies Secure ; set it behind HTTPS MULTI_LLM_PUBLIC_DASHBOARD unset 1 serves read-only status without a key MULTI_LLM_DAILY_BUDGET_USD unset Warns in the usage pa"
+ },
+ {
+  "page": "docker.html",
+  "id": "docker-data",
+  "title": "Data and volumes",
+  "text": "Data and volumes Everything lives in the named volume multillm-data , mounted at /data : /data/ users/ anna/ settings, providers, keys, usage bernd/ the same, isolated ... The volume survives updates and rebuilds. That is the whole point of using a named volume rather than a bind mount into the source tree. API keys are in there, in plain storage Provider keys live in the volume. Anyone with read access to the Docker socket effectively has them. See security ."
+ },
+ {
+  "page": "docker.html",
+  "id": "docker-update",
+  "title": "Updating",
+  "text": "Updating cd Multi-LLM git pull cd docker docker compose up --build -d Only a rebuild is needed. The volume keeps all data, so users, keys and usage history survive. Before a bigger jump Back up the volume first — see backup and restore . Beta releases can change the settings format."
+ },
+ {
+  "page": "docker.html",
+  "id": "docker-commands",
+  "title": "Command reference",
+  "text": "Command reference docker compose up --build -d # build and start in the background docker compose ps # status; \"healthy\" once the port is bound docker compose start # start docker compose stop # stop, keep everything docker compose down # stop and remove the container, data stays docker compose down -v # ALSO remove the data volume - destructive docker compose logs -f # follow the log docker compose restart # restart down -v cannot be undone It deletes accounts, provider keys and usage history. Take a backup first if any of that matters. Moving the image docker save multillm:latest -o multillm"
+ },
+ {
+  "page": "docker.html",
+  "id": "docker-logs",
+  "title": "Logs and troubleshooting",
+  "text": "Logs and troubleshooting The container is unhealthy docker compose ps docker compose logs --tail 50 It becomes healthy once the port is actually bound. If it never does, the log says why — usually a port already in use. Port already bound sudo lsof -i :5000 Change the host side of the mapping in the compose file, keeping the container side at 5000. Login works, remote access does not Two candidates: the firewall on the host, and MULTI_LLM_EXPOSE not set to 1. The first is ufw allow 5000/tcp or the equivalent. Changes do not appear The image embeds a built frontend. Rebuild: docker compose up -"
+ },
+ {
+  "page": "docker.html",
+  "id": "docker-lan",
+  "title": "Network and firewall",
+  "text": "Network and firewall Three things have to line up, and failure looks the same in all three cases. The container binds all interfaces MULTI_LLM_EXPOSE=1 in the compose file. Without it the port is reachable from the host only. The host publishes the port \"5000:5000\" . Publishing to 127.0.0.1:5000:5000 restricts it to the host. The firewall allows it sudo ufw allow 5000/tcp on Ubuntu, the equivalent on macOS and Windows. From inside another container localhost is that container. Use host.docker.internal instead, with Expose to LAN on. Finding your address hostname -I # Linux ipconfig getifaddr e"
+ },
+ {
+  "page": "docker.html",
+  "id": "docker-backup",
+  "title": "Backup and restore",
+  "text": "Backup and restore Backing up docker run --rm \\ -v multillm-data:/data:ro \\ -v \"$PWD\":/backup \\ alpine tar czf /backup/multillm-backup-$(date +%F).tar.gz -C /data . This contains provider keys in plain storage. Treat the file as a secret. Restoring docker compose down docker volume create multillm-data docker run --rm \\ -v multillm-data:/data \\ -v \"$PWD\":/backup \\ alpine tar xzf /backup/multillm-backup-2026-01-15.tar.gz -C /data docker compose up -d Stop the container first Backing up a running container can capture a half-written file. Always stop or down before copying the volume. Configurat"
+ },
+ {
+  "page": "docker.html",
+  "id": "docker-security",
+  "title": "Security",
+  "text": "Security Compared to the desktop app, the container moves the trust boundary: now several people reach it over a network. Setting Why Leave MULTI_LLM_ALLOW_SIGNUP unset Otherwise anyone who reaches the port can create an account. Put TLS in front for remote teams Nothing in the container provides encryption. Set MULTI_LLM_COOKIE_SECURE=1 behind HTTPS Session cookies are otherwise sent over plain HTTP. Leave MULTI_LLM_PUBLIC_DASHBOARD unset It makes usage and model data readable without a key. Restrict Docker socket access Read access to it is effectively read access to every provider key. What"
+ },
+ {
+  "page": "docker.html",
+  "id": "docker-limits",
+  "title": "Limits",
+  "text": "Limits What the container does not do, stated plainly. Limit Consequence No TLS Put a reverse proxy in front for anything beyond a trusted LAN. No tray icon No desktop window; everything is in the web interface. No autostart Nothing runs after a reboot until you start it. Host port 5000 must be free The container port is fixed; only the host side can move. Local engines must be reachable from the container localhost inside the container is the container. Use host.docker.internal . Rebuilds need the source tree The image is built from the repository, not pulled from a registry. This is beta The"
+ },
+ {
+  "page": "faq.html",
+  "id": "general",
+  "title": "General",
+  "text": "General What does Multi LLM actually do? It puts every LLM provider you have keys for behind one local OpenAI-compatible endpoint, so one URL and one key work in every tool. It also routes between models, fails over when a provider breaks, and keeps your keys on your machine. Do I need an account? Only for the app itself, and it stays on your machine. There is no sign-up, no e-mail address and no external login. Passwords are stored as argon2id hashes. Does it send my data anywhere? Only to the provider you selected, because that is what a model request is . There is no telemetry, no analytics"
+ },
+ {
+  "page": "faq.html",
+  "id": "connecting-a-tool",
+  "title": "Connecting a tool",
+  "text": "Connecting a tool The tool still talks to api.openai.com The base URL field name does not match what the tool expects, so it ignored your value and used its own default. The field name table lists the name per tool family. This is by far the most common problem. Do I need the /v1 at the end? Almost always yes. Claude Code is the exception: it wants the bare address, because it appends the Anthropic path itself. Why does the model list in my tool stay empty? Most tools do not call GET /v1/models . They use whatever you type. Enter multillm or a real model id by hand. The tool cannot find localh"
+ },
+ {
+  "page": "faq.html",
+  "id": "providers-and-models",
+  "title": "Providers and models",
+  "text": "Providers and models A provider shows no models The key is wrong, the base URL does not match, or the provider is unreachable. Use the test button on the card — the dialog names the cause: HTTP 401 for a bad key, a timeout for an unreachable host. The error says the model does not exist or is not enabled The model is switched off in the provider editor, or the name is wrong. Each card shows enabled / total ; having models configured and none enabled is a frequent cause. Can I use a local model like Ollama? Yes, with no key at all. Add it with the base URL http://localhost:11434/v1 and the Open"
+ },
+ {
+  "page": "faq.html",
+  "id": "accounts-and-cost",
+  "title": "Accounts and cost",
+  "text": "Accounts and cost How is cost calculated? From the token counts providers report in their responses. When a provider reports nothing, the number is estimated and marked as such. Your provider's dashboard remains authoritative. Can I set a spending limit? Yes, as a daily budget. The usage panel warns at 80 percent. It is a warning, not a cut-off — requests keep working. Who can see my usage? Only your own account, and the admin's user list. In the container each user has an isolated profile, so members cannot see each other's history. Where are my provider keys stored? In your user profile dire"
+ },
+ {
+  "page": "faq.html",
+  "id": "docker-and-updates",
+  "title": "Docker and updates",
+  "text": "Docker and updates Why does nothing start after a reboot? Because restart: \"no\" is set deliberately. A container that starts itself and stays unreachable is worse than one you start yourself. docker compose start when you need it. Can I reach the proxy from the internet? Not directly — there is no TLS. Put a reverse proxy with a certificate in front, and set MULTI_LLM_COOKIE_SECURE=1 . See HTTPS reverse proxy . How do I update? The app tells you a new version exists and stops there. Nothing is installed automatically. Download, install over the old version, restart. Does the update check phone"
+ },
+ {
+  "page": "faq.html",
+  "id": "general-what-does-multi-llm-actually-do",
+  "title": "What does Multi LLM actually do?",
+  "text": "It puts every LLM provider you have keys for behind one local OpenAI-compatible endpoint, so one URL and one key work in every tool. It also routes between models, fails over when a provider breaks, and keeps your keys on your machine."
+ },
+ {
+  "page": "faq.html",
+  "id": "general-do-i-need-an-account",
+  "title": "Do I need an account?",
+  "text": "Only for the app itself, and it stays on your machine. There is no sign-up, no e-mail address and no external login. Passwords are stored as argon2id hashes."
+ },
+ {
+  "page": "faq.html",
+  "id": "general-does-it-send-my-data-anywhere",
+  "title": "Does it send my data anywhere?",
+  "text": "Only to the provider you selected, because that is what a model request is . There is no telemetry, no analytics and no account. The one optional outbound request is the update check, which you can switch off."
+ },
+ {
+  "page": "faq.html",
+  "id": "general-is-it-free",
+  "title": "Is it free?",
+  "text": "The software is free to install. Your providers bill you directly, and the usage panel estimates what that costs. Local models cost no tokens but use your own electricity and hardware."
+ },
+ {
+  "page": "faq.html",
+  "id": "general-is-it-stable-enough-for-daily-work",
+  "title": "Is it stable enough for daily work?",
+  "text": "It is beta. The API shape may change between versions. Export your configuration before updating, and expect to read release notes."
+ },
+ {
+  "page": "faq.html",
+  "id": "connecting-a-tool-the-tool-still-talks-to-apiopenaicom",
+  "title": "The tool still talks to api.openai.com",
+  "text": "The base URL field name does not match what the tool expects, so it ignored your value and used its own default. The field name table lists the name per tool family. This is by far the most common problem."
+ },
+ {
+  "page": "faq.html",
+  "id": "connecting-a-tool-do-i-need-the-/v1-at-the-end",
+  "title": "Do I need the /v1 at the end?",
+  "text": "Almost always yes. Claude Code is the exception: it wants the bare address, because it appends the Anthropic path itself."
+ },
+ {
+  "page": "faq.html",
+  "id": "connecting-a-tool-why-does-the-model-list-in-my-tool-stay-empty",
+  "title": "Why does the model list in my tool stay empty?",
+  "text": "Most tools do not call GET /v1/models . They use whatever you type. Enter multillm or a real model id by hand."
+ },
+ {
+  "page": "faq.html",
+  "id": "connecting-a-tool-the-tool-cannot-find-localhost",
+  "title": "The tool cannot find localhost",
+  "text": "The tool runs somewhere else than the proxy. In a container, localhost is that container — use host.docker.internal . In a browser-based tool on another device, use your LAN address and switch on Expose to LAN ."
+ },
+ {
+  "page": "faq.html",
+  "id": "connecting-a-tool-streaming-stops-mid-sentence",
+  "title": "Streaming stops mid-sentence",
+  "text": "Compare with streaming off. If it works, the tool does not handle the provider's keep-alive chunks. The workaround is to disable streaming for that tool."
+ },
+ {
+  "page": "faq.html",
+  "id": "connecting-a-tool-my-tool-asks-for-an-api-key-but-i-do-not-have-one",
+  "title": "My tool asks for an API key but I do not have one",
+  "text": "Any string works as a local key, but generate the real one in API › API Keys . A key with model and rate limits is better than one shared by every tool."
+ },
+ {
+  "page": "faq.html",
+  "id": "providers-and-models-a-provider-shows-no-models",
+  "title": "A provider shows no models",
+  "text": "The key is wrong, the base URL does not match, or the provider is unreachable. Use the test button on the card — the dialog names the cause: HTTP 401 for a bad key, a timeout for an unreachable host."
+ },
+ {
+  "page": "faq.html",
+  "id": "providers-and-models-the-error-says-the-model-does-not-exist-or-is-not-enabled",
+  "title": "The error says the model does not exist or is not enabled",
+  "text": "The model is switched off in the provider editor, or the name is wrong. Each card shows enabled / total ; having models configured and none enabled is a frequent cause."
+ },
+ {
+  "page": "faq.html",
+  "id": "providers-and-models-can-i-use-a-local-model-like-ollama",
+  "title": "Can I use a local model like Ollama?",
+  "text": "Yes, with no key at all. Add it with the base URL http://localhost:11434/v1 and the OpenAI format. See local engines ."
+ },
+ {
+  "page": "faq.html",
+  "id": "providers-and-models-how-do-i-make-it-prefer-one-model",
+  "title": "How do I make it prefer one model?",
+  "text": "Star it. Under the weighted strategy a starred model is picked four times as often, which is a blunt but effective way to steer traffic."
+ },
+ {
+  "page": "faq.html",
+  "id": "providers-and-models-what-is-the-difference-between-a-model-and-a-virtual-model",
+  "title": "What is the difference between a model and a virtual model?",
+  "text": "A model is one real model at one provider. A virtual model is a named group of models plus a strategy, so asking for it asks the strategy which one to use. multillm is a virtual model that exists from the start."
+ },
+ {
+  "page": "faq.html",
+  "id": "providers-and-models-does-it-work-with-tool-calling",
+  "title": "Does it work with tool calling?",
+  "text": "Yes. The tool schema passes through and the calling convention is translated per provider. A parameter a provider does not understand is dropped rather than causing an error."
+ },
+ {
+  "page": "faq.html",
+  "id": "accounts-and-cost-how-is-cost-calculated",
+  "title": "How is cost calculated?",
+  "text": "From the token counts providers report in their responses. When a provider reports nothing, the number is estimated and marked as such. Your provider's dashboard remains authoritative."
+ },
+ {
+  "page": "faq.html",
+  "id": "accounts-and-cost-can-i-set-a-spending-limit",
+  "title": "Can I set a spending limit?",
+  "text": "Yes, as a daily budget. The usage panel warns at 80 percent. It is a warning, not a cut-off — requests keep working."
+ },
+ {
+  "page": "faq.html",
+  "id": "accounts-and-cost-who-can-see-my-usage",
+  "title": "Who can see my usage?",
+  "text": "Only your own account, and the admin's user list. In the container each user has an isolated profile, so members cannot see each other's history."
+ },
+ {
+  "page": "faq.html",
+  "id": "accounts-and-cost-where-are-my-provider-keys-stored",
+  "title": "Where are my provider keys stored?",
+  "text": "In your user profile directory, on your machine. They are compared as hashes where a lookup happens, and never leave the machine except to authenticate to the provider."
+ },
+ {
+  "page": "faq.html",
+  "id": "docker-and-updates-why-does-nothing-start-after-a-reboot",
+  "title": "Why does nothing start after a reboot?",
+  "text": "Because restart: \"no\" is set deliberately. A container that starts itself and stays unreachable is worse than one you start yourself. docker compose start when you need it."
+ },
+ {
+  "page": "faq.html",
+  "id": "docker-and-updates-can-i-reach-the-proxy-from-the-internet",
+  "title": "Can I reach the proxy from the internet?",
+  "text": "Not directly — there is no TLS. Put a reverse proxy with a certificate in front, and set MULTI_LLM_COOKIE_SECURE=1 . See HTTPS reverse proxy ."
+ },
+ {
+  "page": "faq.html",
+  "id": "docker-and-updates-how-do-i-update",
+  "title": "How do I update?",
+  "text": "The app tells you a new version exists and stops there. Nothing is installed automatically. Download, install over the old version, restart."
+ },
+ {
+  "page": "faq.html",
+  "id": "docker-and-updates-does-the-update-check-phone-home",
+  "title": "Does the update check phone home?",
+  "text": "It fetches one small file from GitHub, so your IP address is visible to them. Switch it off under Settings › App to make no outbound request at all."
+ },
+ {
+  "page": "faq.html",
+  "id": "docker-and-updates-i-want-a-remote-team-to-use-this-what-is-the-minimum",
+  "title": "I want a remote team to use this. What is the minimum?",
+  "text": "Put it behind HTTPS, leave MULTI_LLM_ALLOW_SIGNUP unset once your accounts exist, and give each person their own key. The rest is in security ."
+ }
+]

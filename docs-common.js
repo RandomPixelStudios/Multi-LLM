@@ -196,46 +196,66 @@
     });
   }
 
+  /* Search spans every page, not just the current one. The index is a
+   * generated JSON file (npm run search-index) that is committed next to the
+   * pages, so it cannot drift from the content it describes. */
+  var searchIndex = null;
+  var searchLoading = false;
+
+  function loadIndex() {
+    if (searchIndex || searchLoading) { return Promise.resolve(searchIndex || []); }
+    searchLoading = true;
+    return fetch("search-index.json")
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (data) { searchIndex = data || []; return searchIndex; })
+      .catch(function () { searchIndex = []; return searchIndex; });
+  }
+
   function initSearch() {
     var input = document.getElementById("doc-search");
     var out = document.getElementById("search-results");
     if (!input || !out) { return; }
-    var index = [];
-    document.querySelectorAll(".doc-main section[id], .doc-main section.doc-section[id]").forEach(function (sec) {
-      var h = sec.querySelector("h2, h3");
-      if (!h) { return; }
-      index.push({
-        id: sec.id,
-        page: document.body.getAttribute("data-page") || "home",
-        title: (h.textContent || "").replace(/\s+/g, " ").trim(),
-        text: (sec.textContent || "").replace(/\s+/g, " ").trim().slice(0, 400)
-      });
-    });
-    function pageFile(key) {
-      for (var i = 0; i < PAGES.length; i++) { if (PAGES[i].key === key) { return PAGES[i].href; } }
-      return "docs.html";
+
+    function pageHref(entry) {
+      return (entry.page === page()) ? "#" + entry.id : entry.page + "#" + entry.id;
     }
+
     function run() {
       var q = input.value.trim().toLowerCase();
       if (q.length < 2) { out.innerHTML = ""; out.classList.add("hidden"); return; }
-      var hits = index.filter(function (e) {
-        return e.title.toLowerCase().indexOf(q) >= 0 || e.text.toLowerCase().indexOf(q) >= 0;
-      }).slice(0, 12);
+      var entries = searchIndex || [];
+      var words = q.split(/\s+/);
+      var hits = entries.filter(function (e) {
+        var hay = (e.title + " " + e.text).toLowerCase();
+        return words.every(function (w) { return hay.indexOf(w) >= 0; });
+      }).sort(function (a, b) {
+        // Title matches rank above body matches.
+        var at = a.title.toLowerCase().indexOf(q) >= 0 ? 0 : 1;
+        var bt = b.title.toLowerCase().indexOf(q) >= 0 ? 0 : 1;
+        return at - bt;
+      }).slice(0, 15);
+
       if (!hits.length) {
         out.innerHTML = '<p class="search-empty">Nothing found for &ldquo;' + esc(input.value) + "&rdquo;.</p>";
       } else {
-        out.innerHTML = hits.map(function (h) {
-          var href = (h.page === page()) ? "#" + h.id : pageFile(h.page) + "#" + h.id;
-          var snippet = h.text.length > 150 ? h.text.slice(0, 150) + "&hellip;" : h.text;
-          return '<a class="search-hit" href="' + href + '">' +
-            '<span class="sh-title">' + esc(h.title) + "</span>" +
+        out.innerHTML = hits.map(function (e) {
+          var where = e.page === page() ? "on this page" : e.page.replace(".html", "").replace(/-/g, " ");
+          var snippet = e.text.length > 130 ? e.text.slice(0, 130) + "&hellip;" : e.text;
+          return '<a class="search-hit" href="' + pageHref(e) + '">' +
+            '<span class="sh-title">' + esc(e.title) + "</span>" +
+            '<span class="sh-where">' + esc(where) + "</span>" +
             '<span class="sh-text">' + esc(snippet) + "</span></a>";
         }).join("");
       }
       out.classList.remove("hidden");
     }
-    input.addEventListener("input", run);
-    input.addEventListener("focus", run);
+
+    input.addEventListener("focus", function () {
+      loadIndex().then(function () { if (input.value.trim().length >= 2) { run(); } });
+    });
+    input.addEventListener("input", function () {
+      if (searchIndex) { run(); } else { loadIndex().then(run); }
+    });
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") { out.classList.add("hidden"); input.blur(); }
     });
