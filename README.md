@@ -171,7 +171,10 @@ are written to the extent a single operator can comply with them.
 
 ## Licence
 
-The website is part of the Multi LLM project. All rights reserved — see
+The website is part of the Multi LLM project. Multi LLM itself may be
+installed and used freely, including in commercial settings; you may not
+resell it, redistribute it, publish the source code, or use the name and
+logo for your own product. See
 [LICENSE](https://github.com/RandomPixelStudios/Multi-LLM/blob/Windows/LICENSE).
 Third-party assets keep their own licences; provider logos and trademarks
 belong to their respective owners.
