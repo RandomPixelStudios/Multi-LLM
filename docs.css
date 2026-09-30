@@ -114,6 +114,11 @@
 
 .doc-main { min-width: 0; max-width: 860px; }
 
+/* Die Landingpage nutzt .doc-main nur als Gitter-Container, nicht als
+   Lesespalte. Ohne das bleibt auf breiten Schirmen die halbe Breite
+   leer, weil die Karten auf 860px begrenzt werden. */
+.docs-landing .doc-main { max-width: none; }
+
 .doc-eyebrow {
   display: inline-block;
   font-size: 11px;
@@ -316,6 +321,15 @@
 
 /* Landing page grid */
 .docs-hero { max-width: 1400px; margin: 0 auto; padding: 56px 28px 26px; }
+/* Der Hero und das Kartengitter muessen dieselbe Innenkante haben,
+   sonst sitzt der Einstiegstext schief neben den Karten. Beide
+   bekommen daher dieselbe Box wie .docs-shell. */
+.docs-shell { max-width: 1400px; margin-left: auto; margin-right: auto; }
+/* .docs-page ist display:flex mit flex-direction:column. Ohne
+   align-items:stretch schrumpft der Hero auf seine Inhaltsbreite
+   (828px) statt die volle Zeile (1400px) einzunehmen - deshalb
+   sass der Einstiegstext schief neben dem Kartengitter. */
+.docs-hero { width: 100%; max-width: 1400px; margin: 0 auto; align-self: stretch; }
 .docs-hero h1 {
   font-size: clamp(32px, 4.6vw, 52px);
   line-height: 1.05;
@@ -323,10 +337,16 @@
   font-weight: 880;
   margin: 0 0 14px;
 }
-.docs-hero p { font-size: 18px; line-height: 1.6; color: var(--text-2); max-width: 62ch; margin: 0; }
+.docs-hero p { font-size: 18px; line-height: 1.6; color: var(--text-2); margin: 0; max-width: none; }
+/* .doc-lede begrenzt auf 72ch - das war im Hero zu eng und
+   zentrierte den Einstieg optisch neben das Kartengitter. */
+.docs-hero .doc-lede { max-width: 68ch; }
 .docs-cta { display: flex; gap: 11px; flex-wrap: wrap; margin-top: 24px; }
 
 .page-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 34px; }
+/* Auf breiten Schirmen zwei Spalten wirken verloren neben dem Textblock;
+   drei fuellen die Zeile und verkuerzen die Seite. */
+@media (min-width: 1100px) { .page-grid { grid-template-columns: repeat(3, 1fr); } }
 .page-card {
   display: flex;
   flex-direction: column;
