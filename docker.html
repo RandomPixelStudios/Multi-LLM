@@ -2,19 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'; img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; frame-src https://www.youtube-nocookie.com" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark light" />
   <meta name="description" content="Run Multi LLM in a container in multi-user mode: setup, network, backup and hardening." />
   <title>Docker – Multi LLM</title>
   <link rel="icon" type="image/png" href="assets/logo.png" />
   <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="docs.css?v=15" />
+  <link rel="stylesheet" href="docs.css?v=2.0" />
   <script>try{var p=JSON.parse(localStorage.getItem("ml-prefs"));if(p&&p.theme==="light"){document.documentElement.setAttribute("data-theme","light");}}catch(e){}</script>
 </head>
 <body class="docs-page" data-page="docker">
+  <a class="skip-link" href="#inhalt"><span class="lang-en">Skip to content</span><span class="lang-de">Zum Inhalt springen</span></a>
   <header class="topbar" id="topbar-slot"></header>
 
-  <main class="docs-page">
+  <main id="inhalt" class="docs-page">
     <div class="docs-shell">
       <aside class="docs-left">
         <div class="doc-search-wrap">
@@ -473,7 +475,7 @@ docker compose up -d</div>
   <footer class="sitefoot" id="footer-slot"></footer>
   <div class="consent hidden" id="consent-banner" role="region" aria-label="Privacy settings"><div id="consent-slot"></div></div>
 
-  <script src="docs-common.js?v=18"></script>
+  <script src="docs-common.js?v=20"></script>
   <script>
     (function () {
       var P = window.DOC_PAGES;

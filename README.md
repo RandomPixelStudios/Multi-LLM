@@ -17,10 +17,15 @@ file, served by GitHub Pages.
 | `docs.html` | Full documentation — installation, tutorials, API reference, FAQ |
 | `legal.html` | Imprint, privacy policy, terms (English and German) |
 | `update.json` | Update manifest for the desktop app |
-| `styles.css` | Site and app-replica styles |
-| `script.js` | Dropdown, theme, consent banner and the app demo |
+| `styles.css` | Site and app-replica styles, including the local `@font-face` rules |
+| `docs.css` | Documentation layout, layered on top of `styles.css` |
+| `docs-common.js` | Shared chrome: topbar, sidebar, footer, search, scroll spy, consent banner |
+| `theme-boot.js` | Applies the stored theme before the first paint, prevents a flash |
+| `legal-page.js` | Language switcher for `legal.html` only |
+| `script.js` | Landing page: dropdown, theme, and the app demo |
 | `assets/logo.png` | App logo |
-| `assets/logos/` | Provider logos used in the picker and cards |
+| `assets/logos/` | Provider logos, WebP where they exist, PNG as fallback |
+| `assets/fonts/` | Inter and JetBrains Mono (variable, latin subset), SIL OFL 1.1 |
 | `.nojekyll` | Tells Pages to serve the files as-is |
 | `deploy.sh` | Commit and push helper |
 
@@ -95,8 +100,20 @@ involved.
 **Bilingual.** German and English, switched from the footer, remembered in
 local storage. Default follows the browser language.
 
-**Dark by default.** The page renders dark on first paint via a small inline
-script in the `<head>`, so there is no white flash on a phone with a light OS.
+**Dark by default.** The page renders dark on first paint via `theme-boot.js`,
+loaded with `blocking="render"`, so there is no white flash on a phone with a
+light OS.
+
+**Fonts are served from here.** Inter and JetBrains Mono live in `assets/fonts/`
+as variable fonts in the latin subset (86 KB together, six weights in two
+files). No request ever reaches Google, which is why the consent banner has
+nothing to ask about fonts. Both are SIL OFL 1.1; the licence texts sit next to
+the files.
+
+**Logos.** Provider logos are WebP where a WebP exists, capped at 56 px — twice
+the largest render size, so they stay sharp on a retina screen. `logoHtml()`
+tries `.webp` first and falls back to the original file through `onerror`, so
+adding a PNG later needs no code change.
 
 **The demo is a real replica.** Not a screenshot: a faithful, clickable copy of
 the desktop UI — every tab works, dialogs open, settings toggle. It runs on
@@ -104,15 +121,23 @@ sample data and connects to nothing. On screens up to 900 px it is hidden and
 the trailer video takes its place, because the panes become unusable slivers at
 that width.
 
-**Consent banner.** GitHub Pages writes server logs (IP address, timestamp,
-page, status) before any page of ours can ask anything, so a stored "accepted"
-would claim a consent nobody was asked for. The banner therefore appears on
-every visit, stores nothing, and the Datenschutz text says plainly that
-declining cannot stop the logs. Buttons close the banner; they do not pretend
-to change what GitHub already recorded.
+**Consent banner.** Only one thing still comes from a third party: the YouTube
+player. Before a decision nothing is requested from outside, the video slot
+shows a placeholder, and the fonts come from this repository. Choosing "accept
+all" loads the player, "necessary only" keeps it out for good. The decision is
+one value in local storage, withdrawable any time through "Privacy settings" in
+the footer, which reopens the banner and unloads the player on the spot.
 
-**Video.** Embedded from `youtube-nocookie.com` with `loading="lazy"`, so no
-cookie is set before the visitor presses play.
+**GitHub Pages logs anyway.** The server writes IP address, timestamp, page and
+status before any page of ours can ask anything. No button here can prevent
+that, so the banner and the privacy policy say so plainly instead of pretending
+a choice covers it.
+
+**Content-Security-Policy.** Delivered as a `<meta>` tag, because Pages serves
+no custom headers. `base-uri 'none'`, `object-src 'none'` and
+`form-action 'self'` do the real work; `script-src` and `style-src` still carry
+`'unsafe-inline'` for the inline handlers in the app demo. `frame-ancestors`
+would be the strongest addition, but it is ignored in a `<meta>` tag.
 
 ---
 

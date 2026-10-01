@@ -75,18 +75,17 @@
   }
 
   /* ---------------- Consent for external content ----------------
-   * Before consent nothing is loaded from a third party: no Google Fonts,
-   * no YouTube player, only files that ship with this site. "Necessary
-   * only" keeps it that way permanently; "accept all" loads the fonts and
-   * swaps the video placeholder for the real player.
+   * Before consent nothing is loaded from a third party: no YouTube
+   * player, only files that ship with this site. "Necessary only" keeps
+   * it that way; "accept all" swaps the video placeholder for the real
+   * player.
+   *
+   * The fonts used to be a second case here. They are served from this
+   * repository now (see the @font-face rules in styles.css), so there is
+   * no Google request left to consent to.
    *
    * GitHub Pages writes its server log before any page of ours can ask
    * anything. The banner says so, because no button here can prevent it. */
-
-  var GOOGLE_FONTS =
-    "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900" +
-    "&family=JetBrains+Mono:wght@400;500&display=swap";
-
   function readConsent() {
     try { return localStorage.getItem(CONSENT_KEY); } catch (e) { return null; }
   }
@@ -99,35 +98,6 @@
     try { localStorage.removeItem(CONSENT_KEY); } catch (e) {}
   }
 
-  /* Injects the font stylesheet only after consent, and removes it again
-   * when the visitor switches back to necessary-only. */
-  function applyFonts(on) {
-    var id = "ml-fonts";
-    var el = document.getElementById(id);
-    if (on) {
-      if (el) { return; }
-      var pre1 = document.createElement("link");
-      pre1.rel = "preconnect";
-      pre1.href = "https://fonts.googleapis.com";
-      var pre2 = document.createElement("link");
-      pre2.rel = "preconnect";
-      pre2.href = "https://fonts.gstatic.com";
-      pre2.crossOrigin = "anonymous";
-      var css = document.createElement("link");
-      css.id = id;
-      css.rel = "stylesheet";
-      css.href = GOOGLE_FONTS;
-      document.head.appendChild(pre1);
-      document.head.appendChild(pre2);
-      document.head.appendChild(css);
-    } else {
-      if (el) { el.remove(); }
-      var p1 = document.querySelector('link[href="https://fonts.googleapis.com"][rel="preconnect"]:not([id])');
-      var p2 = document.querySelector('link[href="https://fonts.gstatic.com"][rel="preconnect"]:not([id])');
-      if (p1) { p1.remove(); }
-      if (p2) { p2.remove(); }
-    }
-  }
 
   /* Replaces the click-to-load placeholder with the real YouTube embed.
    * Without consent the placeholder stays, so nothing is fetched. */
@@ -238,15 +208,15 @@
       '<div class="consent-inner">' +
         '<div class="consent-text">' +
           '<p><b class="lang-en">Before you decide</b><b class="lang-de">Bevor Sie entscheiden</b> ' +
-            '<span class="lang-en">this site loads nothing from a third party: no Google Fonts, ' +
-              'no YouTube, only files that ship with this site.</span>' +
-            '<span class="lang-de">lädt diese Seite nichts von Dritten: keine Google Fonts, ' +
-              'kein YouTube, nur Dateien, die mit dieser Site ausgeliefert werden.</span></p>' +
+            '<span class="lang-en">this site loads nothing from a third party. The fonts you are ' +
+              'reading are served from here, and no YouTube player is loaded &mdash; you see a ' +
+              'placeholder instead.</span>' +
+            '<span class="lang-de">lädt diese Seite nichts von Dritten. Die Schriftarten, die Sie ' +
+              'lesen, werden von hier ausgeliefert, und es wird kein YouTube-Player geladen &mdash; ' +
+              'Sie sehen stattdessen eine Platzhalter-Schaltfläche.</span></p>' +
           '<p><b class="lang-en">After &bdquo;Accept all&rdquo;</b><b class="lang-de">Nach &bdquo;Alle akzeptieren&rdquo;</b> ' +
-            '<span class="lang-en">Google Fonts load and the YouTube video is loaded. ' +
-              'Until then neither is requested.</span>' +
-            '<span class="lang-de">werden Google Fonts und das YouTube-Video geladen. ' +
-              'Bis dahin wird nichts davon abgerufen.</span></p>' +
+            '<span class="lang-en">the YouTube video is loaded. Until then it is not requested.</span>' +
+            '<span class="lang-de">wird das YouTube-Video geladen. Bis dahin wird es nicht abgerufen.</span></p>' +
           '<p class="consent-note"><span class="lang-en">Visiting this site, your IP address is ' +
               'processed by GitHub Pages and logged for security. That happens independently ' +
               'of your choice and cannot be prevented by this banner.</span>' +
@@ -389,7 +359,6 @@
   /* Consent: null = never decided, "all" = fonts + video, "necessary" =
      local files only. Decided once, then remembered. */
   var decision = readConsent();
-  applyFonts(decision === "all");
   applyVideo(decision === "all");
   if (decision) { hideConsent(); } else { showConsent(); }
 
@@ -398,7 +367,6 @@
   if (acc) {
     acc.addEventListener("click", function () {
       writeConsent("all");
-      applyFonts(true);
       applyVideo(true);
       hideConsent();
     });
@@ -406,7 +374,6 @@
   if (dec) {
     dec.addEventListener("click", function () {
       writeConsent("necessary");
-      applyFonts(false);
       applyVideo(false);
       hideConsent();
     });
@@ -429,7 +396,6 @@
       var wasAll = readConsent() === "all";
       clearConsent();
       if (wasAll) {
-        applyFonts(false);
         applyVideo(false);
       }
       showConsent();

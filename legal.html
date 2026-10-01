@@ -2,15 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'; img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; frame-src https://www.youtube-nocookie.com" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark light" />
   <meta name="description" content="Multi LLM legal notices – imprint, privacy policy, terms of use and disclaimer (English and German)." />
   <title>Legal – Multi LLM</title>
   <link rel="icon" type="image/png" href="assets/logo.png" />
-  <link rel="stylesheet" href="styles.css?v=1.0.7" />
-  <script>try{var p=JSON.parse(localStorage.getItem("ml-prefs"));if(p&&p.theme==="light"){document.documentElement.setAttribute("data-theme","light")}}catch(e){}</script>
+  <link rel="stylesheet" href="styles.css?v=2.0" />
+  <script src="theme-boot.js?v=1" blocking="render"></script>
 </head>
 <body>
+  <a class="skip-link" href="#inhalt"><span class="lang-en">Skip to content</span><span class="lang-de">Zum Inhalt springen</span></a>
   <header class="topbar">
     <div class="topbar-inner">
       <a class="brand" href="index.html" aria-label="Multi LLM – home">
@@ -41,7 +43,7 @@
       <a href="#terms"><span class="lang-en">Terms &amp; disclaimer</span><span class="lang-de">Bedingungen &amp; Haftungsausschluss</span></a>
     </nav>
 
-    <main class="docs-main">
+    <main id="inhalt" class="docs-main">
       <h1><span class="lang-en">Legal</span><span class="lang-de">Rechtliches</span></h1>
       <div class="lang-en"><p>Imprint, privacy policy, and terms of use for this website and the MULTILLM project – in English and German.</p></div>
       <div class="lang-de"><p>Impressum, Datenschutzerklärung und Nutzungsbedingungen für diese Website und das MULTILLM-Projekt – auf Englisch und Deutsch.</p></div>
@@ -81,29 +83,29 @@
         <p><strong>1. Controller.</strong> Responsible for data processing on this website:<br />
         John Weide, Ernst-Barlach-Straße 53, 79312 Emmendingen, Germany, email: randompixxelstudios@gmail.com</p>
         <p><strong>2. Website vs. app – please read this first.</strong> This policy covers <em>this website only</em>. The MULTILLM desktop app and the Docker image process your provider API keys exclusively locally on your own machine or server – no keys, prompts, or usage data are ever sent to us. If you self-host the Docker image, <em>you</em> become the controller for your users' data.</p>
-        <p><strong>3. Before and after your choice.</strong> This site loads nothing from a third party until you decide. <em>Before consent</em> no Google Fonts are requested and no YouTube player is loaded &mdash; only files that ship with this site. <em>Accept all</em> loads Google Fonts and the YouTube video; <em>Necessary only</em> keeps it that way permanently. Your choice is stored as a single value (<code>all</code> or <code>necessary</code>) in your browser&rsquo;s local storage, never leaves your device, and is not sent anywhere. No cookies are set, no analytics, no advertising.</p>
+        <p><strong>3. Before and after your choice.</strong> This site loads nothing from a third party until you decide. <em>Before consent</em> no YouTube player is loaded and nothing at all is requested from a third party &mdash; only files that ship with this site, fonts included. <em>Accept all</em> loads the YouTube video; <em>Necessary only</em> keeps it that way permanently. Your choice is stored as a single value (<code>all</code> or <code>necessary</code>) in your browser&rsquo;s local storage, never leaves your device, and is not sent anywhere. No cookies are set, no analytics, no advertising.</p>
         <p><strong>4. Hosting, and the log entries you cannot decline.</strong> This website is hosted by GitHub, Inc., 88 Colin P. Kelly Jr. St., San Francisco, CA 94107, United States (<code>github.com</code>, <code>*.github.io</code>). When you visit, GitHub records your IP address, date/time, the requested page and status codes in server log files. <strong>This happens before any page of ours can ask you anything</strong> &mdash; the connection to GitHub&rsquo;s servers already exists at that point. It takes place independently of your choice and <strong>cannot be prevented by this banner</strong>. Legal basis: Art. 6(1)(f) GDPR &mdash; our legitimate interest in operating and securing the site. No consent is involved here and none can be obtained: GitHub&rsquo;s processing has already taken place before this page reaches the visitor. GitHub publishes no fixed retention period; see the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Privacy Statement</a>.</p>
-        <p><strong>5. Google Fonts &mdash; only after consent.</strong> Before you choose, the site requests no fonts from Google and falls back to your system fonts. Choosing <em>Accept all</em> loads the typeface from <code>fonts.googleapis.com</code> and <code>fonts.gstatic.com</code> (Google LLC), which transmits your IP address to Google in the USA. Legal basis: Art. 6(1)(a) GDPR &mdash; your consent, and nothing else. Nothing is requested from Google before you give it, so there is no other processing to justify. The USA is covered by an adequacy decision (EU-US Data Privacy Framework, Google LLC is certified). Google&rsquo;s policy: <code>https://policies.google.com/privacy</code>. With <em>Necessary only</em> nothing is ever requested. You can change or withdraw your choice at any time via the &ldquo;Privacy settings&rdquo; button in the footer; it reopens this banner, and switching back to <em>Necessary only</em> unloads the fonts and the video immediately.</p>
+        <p><strong>5. Fonts &mdash; served from this site.</strong> The typefaces you are reading (Inter and JetBrains Mono) are stored in this website&rsquo;s own repository and loaded from here. No request ever goes to Google, so your IP address is not disclosed for font loading and there is nothing to consent to. Both fonts are licensed under the SIL Open Font License 1.1; the licence texts are in the <code>assets/fonts/</code> folder of the project.</p>
         <p><strong>6. YouTube video &mdash; only after consent.</strong> Before you choose, no request goes to YouTube; the page shows a placeholder button instead. Choosing <em>Accept all</em> loads the player from <code>youtube-nocookie.com</code>, operated by Google Ireland Limited (Google LLC), which then receives your IP address and browser information (such as browser version, operating system, and the page you came from). Google&rsquo;s own notice: <code>https://policies.google.com/privacy</code>. Legal basis: Art. 6(1)(a) GDPR &mdash; your consent, and nothing else. The placeholder is shown instead of the player until you decide, so YouTube is contacted only if you allow it. The USA is covered by the EU-US Data Privacy Framework, see <code>https://policies.google.com/privacy</code>. With <em>Necessary only</em> the video is never loaded. A link to the YouTube channel in the top bar is a plain link: it contacts YouTube only if you click it, which is a separate act.</p>
-        <p><strong>7. External links.</strong> The YouTube button links to the external channel <code>@RandomPixelStudios</code> and the Discord button to an external community server. Only those operators are responsible for that content. The <em>Download</em> button takes you straight to the project's releases page on <code>github.com</code>; the <em>Donate</em> button takes you to <code>ko-fi.com/randompixxelstudios</code>. Following one of these links connects your browser with that provider, who then applies its own data practices.</p>
-        <p><strong>8. Your rights.</strong> Under the GDPR you have the right of access (Art. 15), rectification (Art. 16), erasure (Art. 17), restriction (Art. 18), portability (Art. 20), and objection (Art. 21) – contact the email above. You also have the right to lodge a complaint with a supervisory authority (Art. 77), e.g. in your federal state / EU member state. The competent authority for Baden-Württemberg is the Landesbeauftragte für den Datenschutz und die Informationsfreiheit.</p>
-        <p><strong>9. US visitors (e.g. California/CCPA).</strong> We sell no personal information and share none for cross-context behavioral advertising. The only personal data we process is the contact data listed in the imprint, and we use it solely to answer your inquiry. To exercise access or deletion rights, write to randompixxelstudios@gmail.com.</p>
-        <p><strong>10. Children.</strong> This website is not directed at children under 16.</p>
-        <p><strong>11. Changes.</strong> We update this policy when technology or law changes. Status: September 2026.</p>
+        <p><strong>6. External links.</strong> The YouTube button links to the external channel <code>@RandomPixelStudios</code> and the Discord button to an external community server. Only those operators are responsible for that content. The <em>Download</em> button takes you straight to the project's releases page on <code>github.com</code>; the <em>Donate</em> button takes you to <code>ko-fi.com/randompixxelstudios</code>. Following one of these links connects your browser with that provider, who then applies its own data practices.</p>
+        <p><strong>7. Your rights.</strong> Under the GDPR you have the right of access (Art. 15), rectification (Art. 16), erasure (Art. 17), restriction (Art. 18), portability (Art. 20), and objection (Art. 21) – contact the email above. You also have the right to lodge a complaint with a supervisory authority (Art. 77), e.g. in your federal state / EU member state. The competent authority for Baden-Württemberg is the Landesbeauftragte für den Datenschutz und die Informationsfreiheit.</p>
+        <p><strong>8. US visitors (e.g. California/CCPA).</strong> We sell no personal information and share none for cross-context behavioral advertising. The only personal data we process is the contact data listed in the imprint, and we use it solely to answer your inquiry. To exercise access or deletion rights, write to randompixxelstudios@gmail.com.</p>
+        <p><strong>9. Children.</strong> This website is not directed at children under 16.</p>
+        <p><strong>10. Changes.</strong> We update this policy when technology or law changes. Status: September 2026.</p>
       </div>
       <div class="lang-de">
         <p><strong>1. Verantwortlicher.</strong> Verantwortlich für die Datenverarbeitung auf dieser Website ist:<br />
         John Weide, Ernst-Barlach-Straße 53, 79312 Emmendingen, Deutschland, E-Mail: randompixxelstudios@gmail.com</p>
         <p><strong>2. Website vs. App – bitte zuerst lesen.</strong> Diese Erklärung betrifft <em>nur diese Website</em>. Die MULTILLM Desktop-App und das Docker-Image verarbeiten Ihre Provider-API-Schlüssel ausschließlich lokal auf Ihrem eigenen Rechner oder Server – Schlüssel, Prompts oder Nutzungsdaten werden niemals an uns übertragen. Wenn Sie das Docker-Image selbst hosten, sind <em>Sie</em> der Verantwortliche für die Daten Ihrer Nutzer.</p>
-        <p><strong>3. Vor und nach Ihrer Wahl.</strong> Diese Seite lädt nichts von Dritten, bevor Sie entschieden haben. <em>Vor der Zustimmung</em> werden keine Google Fonts angefragt und kein YouTube-Player geladen &mdash; nur Dateien, die mit dieser Site ausgeliefert werden. <em>Alle akzeptieren</em> lädt Google Fonts und das YouTube-Video; <em>Nur notwendige</em> belässt es dauerhaft dabei. Ihre Wahl wird als einzelner Wert (<code>all</code> oder <code>necessary</code>) im lokalen Speicher Ihres Browsers gespeichert, verlässt Ihr Gerät nie und wird nirgendwohin gesendet. Keine Cookies, keine Analyse-Tools, keine Werbung.</p>
+        <p><strong>3. Vor und nach Ihrer Wahl.</strong> Diese Seite lädt nichts von Dritten, bevor Sie entschieden haben. <em>Vor der Zustimmung</em> wird kein YouTube-Player geladen und es wird überhaupt nichts bei Dritten abgerufen &mdash; nur Dateien, die mit dieser Site ausgeliefert werden, Schriftarten eingeschlossen. <em>Alle akzeptieren</em> lädt das YouTube-Video; <em>Nur notwendige</em> belässt es dauerhaft dabei. Ihre Wahl wird als einzelner Wert (<code>all</code> oder <code>necessary</code>) im lokalen Speicher Ihres Browsers gespeichert, verlässt Ihr Gerät nie und wird nirgendwohin gesendet. Keine Cookies, keine Analyse-Tools, keine Werbung.</p>
         <p><strong>4. Hosting und die Logeinträge, die Sie nicht ablehnen können.</strong> Diese Website wird von der GitHub, Inc., 88 Colin P. Kelly Jr. St., San Francisco, CA 94107, USA gehostet (<code>github.com</code>, <code>*.github.io</code>). Beim Aufruf zeichnet GitHub Ihre IP-Adresse, Datum/Uhrzeit, die aufgerufene Seite und Status-Codes in Server-Logfiles auf. <strong>Das geschieht, bevor eine Seite von uns Sie überhaupt fragen kann</strong> &mdash; die Verbindung zu den Servern von GitHub besteht da bereits. Es erfolgt unabhängig von Ihrer Wahl und <strong>kann durch dieses Banner nicht verhindert werden</strong>. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO &mdash; unser berechtigtes Interesse am Betrieb und an der Sicherheit der Website. Eine Einwilligung ist hier nicht beteiligt und kann auch nicht eingeholt werden: Die Verarbeitung durch GitHub ist bereits erfolgt, bevor diese Seite den Besucher erreicht. GitHub nennt keine feste Speicherdauer; siehe die <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub-Datenschutzerklärung</a>.</p>
-        <p><strong>5. Google Fonts &mdash; erst nach der Zustimmung.</strong> Vor Ihrer Wahl fragt die Seite keine Schriftarten bei Google ab und nutzt Systemschriftarten. <em>Alle akzeptieren</em> lädt die Schriftart von <code>fonts.googleapis.com</code> und <code>fonts.gstatic.com</code> (Google LLC); dabei wird Ihre IP-Adresse an Google in den USA übertragen. Rechtsgrundlage ist allein Art. 6 Abs. 1 lit. a DSGVO &mdash; Ihre Zustimmung. Vorher wird nichts bei Google abgerufen, es gibt also keine weitere Verarbeitung, die zu rechtfertigen wäre. Für die USA gilt ein Angemessenheitsbeschluss (EU-US Data Privacy Framework, Google LLC ist zertifiziert). Datenschutzerklärung von Google: <code>https://policies.google.com/privacy</code>. Mit <em>Nur notwendige</em> wird nie etwas abgerufen. Sie können Ihre Wahl jederzeit über die Schaltfläche &bdquo;Datenschutzeinstellungen&rdquo; in der Fußzeile ändern oder widerrufen; sie öffnet dieses Banner erneut, und ein Wechsel zurück auf <em>Nur notwendige</em> entfernt Schriftarten und Video sofort.</p>
+        <p><strong>5. Schriftarten &mdash; von dieser Site ausgeliefert.</strong> Die verwendeten Schriftarten (Inter und JetBrains Mono) liegen im eigenen Repository dieser Website und werden von hier geladen. Es geht nie eine Anfrage an Google, Ihre IP-Adresse wird für das Laden von Schriftarten also nicht offengelegt, und es gibt nichts einzuwilligen. Beide Schriftarten stehen unter der SIL Open Font License 1.1; die Lizenztexte liegen im Ordner <code>assets/fonts/</code> des Projekts.</p>
         <p><strong>6. YouTube-Video &mdash; erst nach der Zustimmung.</strong> Vor Ihrer Wahl geht keine Anfrage an YouTube; stattdessen zeigt die Seite eine Platzhalter-Schaltfläche. <em>Alle akzeptieren</em> lädt den Player von <code>youtube-nocookie.com</code>, betrieben von der Google Ireland Limited (Google LLC); danach erhalten Google Ihre IP-Adresse und Browser-Informationen (etwa Browserversion, Betriebssystem und die Seite, von der Sie kommen). Googles eigene Erklärung: <code>https://policies.google.com/privacy</code>. Rechtsgrundlage ist allein Art. 6 Abs. 1 lit. a DSGVO &mdash; Ihre Zustimmung. Statt des Players erscheint bis zu Ihrer Entscheidung nur die Platzhalter-Schaltfläche, YouTube wird also nur kontaktiert, wenn Sie es erlauben. Für die USA gilt das EU-US Data Privacy Framework, siehe <code>https://policies.google.com/privacy</code>. Mit <em>Nur notwendige</em> wird das Video nie geladen. Der Verweis auf den YouTube-Kanal in der Kopfzeile ist ein einfacher Link: Er kontaktiert YouTube nur, wenn Sie ihn anklicken &mdash; das ist eine eigene Handlung.</p>
-        <p><strong>7. Externe Links.</strong> Der YouTube-Button verlinkt auf den externen Kanal <code>@RandomPixelStudios</code>, der Discord-Button auf einen externen Community-Server. Verantwortlich für diese Inhalte sind ausschließlich deren Betreiber. <em>Herunterladen</em> führt direkt auf die Releases-Seite des Projekts bei <code>github.com</code>, <em>Spenden</em> zu <code>ko-fi.com/randompixxelstudios</code>. Erst wenn Sie einem dieser Links folgen, verbindet sich Ihr Browser mit dem jeweiligen Anbieter, der dann seine eigenen Datenschutzbestimmungen anwendet.</p>
-        <p><strong>8. Ihre Rechte.</strong> Nach der DSGVO haben Sie Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung (Art. 18), Datenübertragbarkeit (Art. 20) sowie Widerspruch (Art. 21) – wenden Sie sich an die E-Mail oben. Außerdem Beschwerderecht bei einer Datenschutz-Aufsichtsbehörde (Art. 77 DSGVO). Zuständig in Baden-Württemberg ist der Landesbeauftragte für den Datenschutz und die Informationsfreiheit.</p>
-        <p><strong>9. US-Besucher (z. B. Kalifornien/CCPA).</strong> Wir verkaufen keine personenbezogenen Daten und geben sie nicht zu zweckfremdem Werbeverhalten weiter. Die einzigen personenbezogenen Daten, die wir verarbeiten, sind die im Impressum genannten Kontaktdaten; wir verwenden sie ausschließlich zur Beantwortung Ihrer Anfrage. Zur Ausübung von Auskunfts- oder Löschungsrechten schreiben Sie an randompixxelstudios@gmail.com.</p>
-        <p><strong>10. Kinder.</strong> Diese Website richtet sich nicht an Kinder unter 16 Jahren.</p>
-        <p><strong>11. Änderungen.</strong> Wir passen diese Erklärung bei Technik- oder Rechtsänderungen an. Stand: September 2026.</p>
+        <p><strong>6. Externe Links.</strong> Der YouTube-Button verlinkt auf den externen Kanal <code>@RandomPixelStudios</code>, der Discord-Button auf einen externen Community-Server. Verantwortlich für diese Inhalte sind ausschließlich deren Betreiber. <em>Herunterladen</em> führt direkt auf die Releases-Seite des Projekts bei <code>github.com</code>, <em>Spenden</em> zu <code>ko-fi.com/randompixxelstudios</code>. Erst wenn Sie einem dieser Links folgen, verbindet sich Ihr Browser mit dem jeweiligen Anbieter, der dann seine eigenen Datenschutzbestimmungen anwendet.</p>
+        <p><strong>7. Ihre Rechte.</strong> Nach der DSGVO haben Sie Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung (Art. 18), Datenübertragbarkeit (Art. 20) sowie Widerspruch (Art. 21) – wenden Sie sich an die E-Mail oben. Außerdem Beschwerderecht bei einer Datenschutz-Aufsichtsbehörde (Art. 77 DSGVO). Zuständig in Baden-Württemberg ist der Landesbeauftragte für den Datenschutz und die Informationsfreiheit.</p>
+        <p><strong>8. US-Besucher (z. B. Kalifornien/CCPA).</strong> Wir verkaufen keine personenbezogenen Daten und geben sie nicht zu zweckfremdem Werbeverhalten weiter. Die einzigen personenbezogenen Daten, die wir verarbeiten, sind die im Impressum genannten Kontaktdaten; wir verwenden sie ausschließlich zur Beantwortung Ihrer Anfrage. Zur Ausübung von Auskunfts- oder Löschungsrechten schreiben Sie an randompixxelstudios@gmail.com.</p>
+        <p><strong>9. Kinder.</strong> Diese Website richtet sich nicht an Kinder unter 16 Jahren.</p>
+        <p><strong>10. Änderungen.</strong> Wir passen diese Erklärung bei Technik- oder Rechtsänderungen an. Stand: September 2026.</p>
       </div>
 
       <h2 id="terms"><span class="lang-en">Terms &amp; disclaimer</span><span class="lang-de">Bedingungen &amp; Haftungsausschluss</span></h2>
@@ -200,124 +202,7 @@
   <div class="consent hidden" id="consent-banner" role="region" aria-label="Privacy settings"><div id="consent-slot"></div></div>
 
 
-  <script src="docs-common.js?v=18"></script>
-  <script>
-  (function () {
-    "use strict";
-    var LANG_KEY = "ml-lang";
-    var LANG = "en";
-    var FLAGS = {
-      de: '<svg viewBox="0 0 24 18"><rect width="24" height="6" fill="#151515"/><rect y="6" width="24" height="6" fill="#DD0000"/><rect y="12" width="24" height="6" fill="#FFCE00"/></svg>',
-      en: '<svg viewBox="0 0 24 18"><rect width="24" height="18" fill="#012169"/><path d="M0 0l24 18M24 0L0 18" stroke="#ffffff" stroke-width="3.4"/><path d="M0 0l24 18M24 0L0 18" stroke="#C8102E" stroke-width="2.2"/><path d="M12 0v18M0 9h24" stroke="#ffffff" stroke-width="5.6"/><path d="M12 0v18M0 9h24" stroke="#C8102E" stroke-width="3.2"/></svg>'
-    };
-    var TITLE = { en: "Legal – Multi LLM", de: "Rechtliches – Multi LLM" };
-    var DESC = {
-      en: "Multi LLM legal notices – imprint, privacy policy, terms of use and disclaimer (English and German).",
-      de: "Multi-LLM-Rechtstexte – Impressum, Datenschutz, Bedingungen und Haftungsausschluss (Englisch und Deutsch)."
-    };
-    function setLang(lang, persist) {
-      LANG = (lang === "de") ? "de" : "en";
-      document.documentElement.lang = LANG;
-      document.title = TITLE[LANG];
-      var md = document.querySelector('meta[name="description"]');
-      if (md) md.setAttribute("content", DESC[LANG]);
-      var flag = document.getElementById("lang-flag"), code = document.getElementById("lang-code");
-      if (flag) flag.innerHTML = FLAGS[LANG];
-      if (code) code.textContent = LANG.toUpperCase();
-      var opts = document.querySelectorAll(".lang-opt");
-      for (var i = 0; i < opts.length; i++) opts[i].classList.toggle("selected", opts[i].getAttribute("data-lang") === LANG);
-      if (persist) { try { localStorage.setItem(LANG_KEY, LANG); } catch (e) {} }
-    }
-    function readLang() {
-      try {
-        var s = localStorage.getItem(LANG_KEY);
-        if (s === "de" || s === "en") return s;
-      } catch (e) {}
-      try {
-        var nav = (navigator.language || navigator.userLanguage || "en").toLowerCase();
-        if (nav.indexOf("de") === 0) return "de";
-      } catch (e2) {}
-      return "en";
-    }
-    setLang(readLang(), false);
-    var btn = document.getElementById("lang-btn"), menu = document.getElementById("lang-menu");
-    function closeMenu() { if (menu) menu.classList.add("hidden"); if (btn) btn.setAttribute("aria-expanded", "false"); }
-    if (btn) btn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      var open = menu.classList.toggle("hidden") === false;
-      btn.setAttribute("aria-expanded", open ? "true" : "false");
-    });
-    document.addEventListener("click", function (e) {
-      var box = document.getElementById("lang-select");
-      if (box && !box.contains(e.target)) closeMenu();
-    });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
-    var opts = document.querySelectorAll(".lang-opt");
-    for (var j = 0; j < opts.length; j++) {
-      opts[j].addEventListener("click", function () { setLang(this.getAttribute("data-lang"), true); closeMenu(); });
-    }
-    // Prefs (theme + consent), same storage as the other pages
-    var PREFS_KEY = "ml-prefs";
-    var prefsMode = "dark"; // dark by default; no first-visit dialog
-    function sysTheme() {
-      try { return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"; }
-      catch (e) { return "dark"; }
-    }
-    function applyTheme(mode) {
-      var eff = mode === "system" ? sysTheme() : mode;
-      if (eff === "light") document.documentElement.setAttribute("data-theme", "light");
-      else document.documentElement.removeAttribute("data-theme");
-    }
-    function setMode(mode, persist) {
-      prefsMode = mode;
-      applyTheme(mode);
-      if (persist) {
-        try { localStorage.setItem(PREFS_KEY, JSON.stringify({ theme: mode, consent: true, ts: Date.now() })); } catch (e) {}
-      }
-    }
-    function readPrefs() {
-      try {
-        var p = JSON.parse(localStorage.getItem(PREFS_KEY));
-        if (p && (p.theme === "light" || p.theme === "dark" || p.theme === "system")) return p;
-      } catch (e) {}
-      try {
-        var old = localStorage.getItem("ml-theme");
-        if (old === "light" || old === "dark") return { theme: old, consent: true };
-      } catch (e2) {}
-      return null;
-    }
-    try {
-      var mq = window.matchMedia("(prefers-color-scheme: light)");
-      if (mq.addEventListener) mq.addEventListener("change", function () { if (prefsMode === "system") applyTheme("system"); });
-    } catch (e) {}
-    var saved = readPrefs();
-    if (saved) setMode(saved.theme || "dark", false);
-    else setMode("dark", false); // no dialog: the page is dark from the first paint
-    var tf = document.getElementById("theme-foot");
-    if (tf) tf.addEventListener("click", function () {
-      var light = document.documentElement.getAttribute("data-theme") === "light";
-      setMode(light ? "dark" : "light", true);
-    });
-    // Consent lives in docs-common.js, which this page also loads: one
-    // implementation, one stored decision, shared with the other pages.
-    // Scrollspy for both sidebars
-    var links = Array.prototype.slice.call(document.querySelectorAll(".docs-side a, .docs-toc a"));
-    var map = {};
-    links.forEach(function (a) { (map[a.getAttribute("href").slice(1)] = map[a.getAttribute("href").slice(1)] || []).push(a); });
-    if ("IntersectionObserver" in window) {
-      var spy = new IntersectionObserver(function (es) {
-        es.forEach(function (e) {
-          if (!e.isIntersecting) return;
-          links.forEach(function (a) { a.classList.remove("active"); });
-          (map[e.target.id] || []).forEach(function (a) { a.classList.add("active"); });
-        });
-      }, { rootMargin: "-30% 0px -60% 0px" });
-      Object.keys(map).forEach(function (id) {
-        var s = document.getElementById(id);
-        if (s) spy.observe(s);
-      });
-    }
-  })();
-  </script>
+  <script src="docs-common.js?v=20"></script>
+  <script src="legal-page.js?v=1"></script>
 </body>
 </html>

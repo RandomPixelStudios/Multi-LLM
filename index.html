@@ -2,16 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'; img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; frame-src https://www.youtube-nocookie.com" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark light" />
   <meta name="description" content="Multi LLM – all LLM providers behind one OpenAI-compatible local API. Try the faithful app demo right here." />
   <title>Multi LLM – All LLM Providers. One API.</title>
   <link rel="icon" type="image/png" href="assets/logo.png" />
-  <link rel="stylesheet" href="styles.css?v=1.0.7" />
+  <link rel="stylesheet" href="styles.css?v=2.0" />
   <noscript><style>.topbar,.hero-title .ht-line-in,.dl-row,.appwin,.why-grid .why-card,.rv{opacity:1!important;transform:none!important;animation:none!important;transition:none!important}</style></noscript>
-  <script>try{var p=JSON.parse(localStorage.getItem("ml-prefs"));if(p&&p.theme==="light"){document.documentElement.setAttribute("data-theme","light")}}catch(e){}</script>
+  <script src="theme-boot.js?v=1" blocking="render"></script>
 </head>
 <body>
+  <a class="skip-link" href="#inhalt"><span class="lang-en">Skip to content</span><span class="lang-de">Zum Inhalt springen</span></a>
   <div class="bg-mesh" aria-hidden="true"><i class="orb o1"></i><i class="orb o2"></i></div>
 
   <header class="topbar" id="topbar">
@@ -36,7 +38,8 @@
     </div>
   </header>
 
-  <main id="top">
+  <span id="top"></span>
+  <main id="inhalt">
     <!-- ============ HERO ============ -->
     <section class="hero">
       <h1 class="hero-title"><span class="ht-line"><span class="ht-line-in d1"><span class="lang-en">All LLM Providers.</span><span class="lang-de">Alle LLM-Provider.</span></span></span><span class="ht-line"><span class="ht-line-in d2"><span class="lang-en grad">One API.</span><span class="lang-de grad">Eine API.</span></span></span></h1>
@@ -396,7 +399,7 @@
 
   <div class="consent hidden" id="consent-banner" role="region" aria-label="Privacy settings"><div id="consent-slot"></div></div>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="docs-common.js?v=18"></script>
-  <script src="script.js?v=1.0.6"></script>
+  <script src="docs-common.js?v=20"></script>
+  <script src="script.js?v=2.0"></script>
 </body>
 </html>

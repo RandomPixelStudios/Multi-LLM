@@ -224,10 +224,17 @@
     return String(n);
   }
   function dotClass(s) { return s === "ok" ? "ok" : s === "error" ? "err" : s === "warn" ? "warn" : ""; }
+  /* Logoliste: der Dateiname ohne Endung. Bewusst ohne Endung im
+     Mapping, damit dasselbe Logo als .webp und als .png greift - die
+     schweren PNGs wurden auf WebP umgestellt, und ein fehlendes Logo
+     soll nie eine kaputte Grafik erzeugen. */
   function logoHtml(name, cls) {
-    var f = LOGOS[name];
-    if (!f) return "";
-    return '<span class="p-logowrap ' + cls + '"><img src="assets/logos/' + f + '" alt="" loading="lazy" onerror="this.parentNode.remove()"></span>';
+    var base = LOGOS[name];
+    if (!base) return "";
+    var stem = base.replace(/\.(png|webp|ico|jpe?g|svg)$/i, "");
+    return '<span class="p-logowrap ' + cls + '"><img src="assets/logos/' + stem +
+      '.webp" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;' +
+      'this.src=\'assets/logos/' + base + '\'"></span>';
   }
   function uniquePrefixes(provs) {
     if (!provs.length) return [];

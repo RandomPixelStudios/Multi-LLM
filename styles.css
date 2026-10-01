@@ -3,6 +3,27 @@
    Slim English hero + faithful full-size app demo.
    App replica styles mirror src/ui.css (Fluent, 8px / 4px).
    ============================================================ */
+
+/* ============================================================
+   Fonts, served from this repository.
+   Both families are variable fonts under the SIL Open Font
+   License 1.1 (see assets/fonts/). Self-hosting them means no
+   request ever reaches Google, so the fonts need no consent.
+   ============================================================ */
+@font-face{
+  font-family:"Inter";
+  src:url("assets/fonts/inter-var.woff2") format("woff2");
+  font-weight:100 900;
+  font-style:normal;
+  font-display:swap;
+}
+@font-face{
+  font-family:"JetBrains Mono";
+  src:url("assets/fonts/jetbrains-mono-var.woff2") format("woff2");
+  font-weight:100 800;
+  font-style:normal;
+  font-display:swap;
+}
 :root{
   --bg:#101010; --surface:#1a1a1a; --surface-2:#232323; --surface-3:#2b2b2b;
   --stroke:#2c2c2c; --stroke-strong:#404040;
@@ -14,6 +35,12 @@
   --font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Consolas,monospace;
 }
+
+/* Skip link: the first focusable element on every page. Off screen until
+   someone tabs to it, then pinned to the top left so it never scrolls
+   out of reach again. */
+.skip-link{position:absolute;left:-9999px;top:0;z-index:1000;background:var(--accent);color:var(--on-accent);padding:10px 16px;border-radius:0 0 8px 0;font-size:13.5px;font-weight:600;text-decoration:none}
+.skip-link:focus{left:0;outline:2px solid var(--bg);outline-offset:-4px}
 html[data-theme="light"]{
   --bg:#f4f4f5; --surface:#ffffff; --surface-2:#efeff1; --surface-3:#e4e4e7;
   --stroke:#dcdce0; --stroke-strong:#c2c2c7;
