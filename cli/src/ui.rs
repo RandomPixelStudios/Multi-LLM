@@ -122,6 +122,15 @@ pub fn banner(host: &str, user: &str, model: &str, mode: &str, cwd: &str) {
     println!();
 }
 
+/// "⎿ Leere Antwort – neuer Versuch 2/4 in 2 s"
+pub fn retry_notice(msg: &str, attempt: u32, max: u32, wait: u64) {
+    let room = width().saturating_sub(34).max(20);
+    let first = msg.lines().next().unwrap_or("");
+    let short: String = if first.chars().count() > room { first.chars().take(room - 1).collect::<String>() + "…" } else { first.to_string() };
+    let msg = short.as_str();
+    println!("  {}  {} {}", dim("⎿"), warn(msg), dim(&format!("· neuer Versuch {attempt}/{max} in {wait}s")));
+}
+
 /// Put the terminal back into a sane state (raw mode off, cursor visible).
 pub fn restore_terminal() {
     let _ = terminal::disable_raw_mode();

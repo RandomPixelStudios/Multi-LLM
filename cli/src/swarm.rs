@@ -355,11 +355,31 @@ async fn sub_agent(
         json!({"role": "system", "content": sub_system_prompt(kind, cwd)}),
         json!({"role": "user", "content": prompt}),
     ];
+    let mut empty_retries = 0u32;
     for _ in 0..MAX_STEPS {
         let body = json!({"model": model, "messages": messages, "tools": defs, "stream": true, "stream_options": {"include_usage": true}});
-        let resp = tokio::select! {
-            r = client.chat_stream(&body) => r.map_err(|e| e.message)?,
-            _ = cancel.changed() => return Err("abgebrochen".into()),
+        // Retries for transient errors (network, 429, 5xx).
+        let mut attempt = 1u32;
+        let resp = loop {
+            let r = tokio::select! {
+                r = client.chat_stream(&body) => r,
+                _ = cancel.changed() => return Err("abgebrochen".into()),
+            };
+            match r {
+                Ok(r) => break r,
+                Err(e) => {
+                    let msg = crate::agent::retryable(e);
+                    if !msg.starts_with(crate::agent::RETRY) || attempt >= 4 {
+                        return Err(msg.trim_start_matches(crate::agent::RETRY).to_string());
+                    }
+                    push_activity(cards, i, format!("⟳ {} · Versuch {}/4", msg.trim_start_matches(crate::agent::RETRY), attempt + 1));
+                    tokio::select! {
+                        _ = tokio::time::sleep(Duration::from_secs(2u64 << (attempt - 1))) => {}
+                        _ = cancel.changed() => return Err("abgebrochen".into()),
+                    }
+                    attempt += 1;
+                }
+            }
         };
         let mut stream = resp.bytes_stream();
         let mut buf = String::new();
@@ -433,7 +453,17 @@ async fn sub_agent(
             .collect();
         let mut msg = json!({"role": "assistant", "content": if content.is_empty() { Value::Null } else { json!(content) }});
         if calls.is_empty() {
-            return Ok(if content.trim().is_empty() { "(no report)".into() } else { content });
+            if content.trim().is_empty() {
+                // Empty answer: retry the step (bounded by MAX_STEPS).
+                empty_retries += 1;
+                if empty_retries <= 3 {
+                    push_activity(cards, i, format!("⟳ leere Antwort · Versuch {}/4", empty_retries + 1));
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+                    continue;
+                }
+                return Err("Leere Antwort vom Modell (nach 4 Versuchen)".into());
+            }
+            return Ok(content);
         }
         msg["tool_calls"] = json!(calls.iter().map(|(id, n, a)| json!({"id": id, "type": "function", "function": {"name": n, "arguments": if a.trim().is_empty() { "{}" } else { a.as_str() }}})).collect::<Vec<_>>());
         messages.push(msg);

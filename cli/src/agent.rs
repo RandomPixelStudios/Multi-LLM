@@ -68,6 +68,19 @@ impl Drop for Busy {
     }
 }
 
+/// Marker for errors worth retrying (stripped before display).
+pub const RETRY: &str = "\u{1}retry:";
+
+/// Network errors, rate limits and server errors are retryable; client
+/// errors (bad request, unknown model, quota reached ...) are not.
+pub fn retryable(e: crate::client::ApiError) -> String {
+    let transient = e.status == 0
+        || e.status == 408
+        || e.status == 429 && e.code != "usage_limit_reached"
+        || e.status >= 500;
+    if transient { format!("{RETRY}{}", e.message) } else { e.message }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Mode {
     /// Confirm every write and command.
@@ -206,7 +219,34 @@ impl Agent {
 
     /// Streams one completion. Returns tool calls (if any) after appending the
     /// assistant message to the history.
-    async fn complete(&mut self, mut cancel: tokio::sync::watch::Receiver<bool>) -> Result<Option<Vec<Call>>, String> {
+    /// One completion with automatic retries (empty answer, network error,
+    /// interrupted stream, 429, 5xx). Backoff 2 s, 4 s, 8 s.
+    async fn complete(&mut self, cancel: tokio::sync::watch::Receiver<bool>) -> Result<Option<Vec<Call>>, String> {
+        const ATTEMPTS: u32 = 4;
+        let mut attempt = 1;
+        loop {
+            match self.complete_once(cancel.clone()).await {
+                Err(e) if e.starts_with(RETRY) && attempt < ATTEMPTS && !*cancel.borrow() => {
+                    let msg = e.trim_start_matches(RETRY).to_string();
+                    let wait = 2u64 << (attempt - 1);
+                    ui::retry_notice(&msg, attempt + 1, ATTEMPTS, wait);
+                    let mut c = cancel.clone();
+                    tokio::select! {
+                        _ = tokio::time::sleep(std::time::Duration::from_secs(wait)) => {}
+                        _ = c.changed() => return Err("abgebrochen".into()),
+                    }
+                    attempt += 1;
+                }
+                Err(e) => {
+                    let msg = e.trim_start_matches(RETRY).to_string();
+                    return Err(if attempt > 1 { format!("{msg} (nach {attempt} Versuchen)") } else { msg });
+                }
+                ok => return ok,
+            }
+        }
+    }
+
+    async fn complete_once(&mut self, mut cancel: tokio::sync::watch::Receiver<bool>) -> Result<Option<Vec<Call>>, String> {
         let mut tool_defs = tools::definitions(self.search);
         if self.swarm {
             tool_defs.push(crate::swarm::tool_definition());
@@ -230,11 +270,11 @@ impl Agent {
                 spinner.stop();
                 self.client.fetch_api_key().await.map_err(|e| format!("Anmeldung abgelaufen: {e} - /login"))?;
                 spinner = Spinner::start("Arbeitet");
-                self.client.chat_stream(&body).await.map_err(|e| e.message)?
+                self.client.chat_stream(&body).await.map_err(retryable)?
             }
             Err(e) => {
                 spinner.stop();
-                return Err(e.message);
+                return Err(retryable(e));
             }
         };
         let mut stream = resp.bytes_stream();
@@ -252,7 +292,7 @@ impl Agent {
                 _ = cancel.changed() => { cancelled = true; break 'outer; }
             };
             let Some(chunk) = chunk else { break };
-            let chunk = chunk.map_err(|e| format!("Stream unterbrochen: {e}"))?;
+            let chunk = chunk.map_err(|e| format!("{RETRY}Stream unterbrochen: {e}"))?;
             buf.push_str(&String::from_utf8_lossy(&chunk));
             while let Some(i) = buf.find('\n') {
                 let line: String = buf.drain(..=i).collect();
@@ -265,7 +305,7 @@ impl Agent {
                 let Ok(v) = serde_json::from_str::<Value>(data) else { continue };
                 if let Some(err) = v.get("error") {
                     spinner.stop();
-                    return Err(err["message"].as_str().unwrap_or("upstream error").to_string());
+                    return Err(format!("{RETRY}{}", err["message"].as_str().unwrap_or("upstream error")));
                 }
                 if v["usage"].is_object() {
                     usage = Some(v["usage"].clone());
@@ -339,7 +379,7 @@ impl Agent {
             if cancelled {
                 return Err("abgebrochen".into());
             }
-            return Err("Leere Antwort vom Modell.".into());
+            return Err(format!("{RETRY}Leere Antwort vom Modell."));
         }
         self.messages.push(msg);
         if cancelled {
