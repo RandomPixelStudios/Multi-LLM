@@ -64,33 +64,155 @@ pub fn success(msg: &str) {
     println!("{} {}", "✓".with(OK), msg);
 }
 
-pub fn banner(host: &str, user: &str, model: &str, mode: &str) {
-    let w = width().min(78);
-    let line = "─".repeat(w.saturating_sub(2));
-    println!("{}", format!("╭{line}╮").with(ACCENT));
-    let row = |s: String, vis: usize| {
-        let pad = w.saturating_sub(4 + vis);
-        println!("{} {}{} {}", "│".with(ACCENT), s, " ".repeat(pad), "│".with(ACCENT));
+/// Codex-style session box:
+/// ╭──────────────────────────────────────╮
+/// │ >_ Multi LLM (v2.0.0)                │
+/// │                                      │
+/// │ model:     gpt-x      /model to change│
+/// │ directory: ~/project                 │
+/// ╰──────────────────────────────────────╯
+pub fn banner(host: &str, user: &str, model: &str, mode: &str, cwd: &str) {
+    let rows: Vec<(String, usize)> = {
+        let mut v = Vec::new();
+        let title = format!(">_ Multi LLM (v{})", env!("CARGO_PKG_VERSION"));
+        v.push((if plain() { title.clone() } else { format!("{} {}", ">_".with(DIM), format!("Multi LLM (v{})", env!("CARGO_PKG_VERSION")).bold()) }, title.width()));
+        v.push((String::new(), 0));
+        let kv = |k: &str, val: &str, hint: &str| -> (String, usize) {
+            // Keep the box inside the terminal: shorten long values from the left.
+            let room = width().saturating_sub(16 + hint.width() + if hint.is_empty() { 0 } else { 3 }).max(10);
+            let owned;
+            let val = if val.width() > room {
+                let tail: String = val.chars().rev().take(room - 1).collect::<Vec<_>>().into_iter().rev().collect();
+                owned = format!("…{tail}");
+                owned.as_str()
+            } else {
+                val
+            };
+            let plain_s = format!("{k:<11}{val}{}", if hint.is_empty() { String::new() } else { format!("   {hint}") });
+            let styled = format!("{}{}{}", dim(&format!("{k:<11}")), val, if hint.is_empty() { String::new() } else { format!("   {}", dim(hint)) });
+            (styled, plain_s.width())
+        };
+        v.push(kv("model:", model, "/model zum Wechseln"));
+        v.push(kv("directory:", cwd, ""));
+        v.push(kv("server:", &format!("{host} · {user}"), ""));
+        let m = match mode {
+            "bypass" => "bypass-permissions (keine Nachfragen)",
+            "yolo" => "yolo (nur gefährliche Befehle bestätigen)",
+            _ => "ask (vor jeder Änderung fragen)",
+        };
+        v.push(kv("approval:", m, ""));
+        v
     };
-    let title = format!("{} {}", "✻".with(TEAL), "Multi LLM".bold());
-    row(title, 11);
-    row(String::new(), 0);
-    let l1 = format!("{}{}", "Host:   ".with(DIM), host);
-    row(l1, 8 + host.width());
-    let l2 = format!("{}{}", "User:   ".with(DIM), user);
-    row(l2, 8 + user.width());
-    let l3 = format!("{}{}", "Model:  ".with(DIM), model);
-    row(l3, 8 + model.width());
-    let mode_s = match mode {
-        "bypass" => "bypass-permissions".with(BAD).to_string(),
-        "yolo" => "yolo".with(WARN).to_string(),
-        _ => "ask".with(OK).to_string(),
-    };
-    let mode_len = match mode { "bypass" => 18, "yolo" => 4, _ => 3 };
-    row(format!("{}{}", "Mode:   ".with(DIM), mode_s), 8 + mode_len);
-    println!("{}", format!("╰{line}╯").with(ACCENT));
-    println!("{}", dim("  /help für Befehle · Ctrl+C bricht ab · Ctrl+D beendet"));
+    let inner = rows.iter().map(|r| r.1).max().unwrap_or(10).min(width().saturating_sub(4)) + 2;
+    let line = "─".repeat(inner);
+    println!("{}", dim(&format!("╭{line}╮")));
+    for (txt, w) in rows {
+        let pad = inner.saturating_sub(w + 1);
+        println!("{} {}{}{}", dim("│"), txt, " ".repeat(pad), dim("│"));
+    }
+    println!("{}", dim(&format!("╰{line}╯")));
     println!();
+    println!("  {}", dim("Beschreibe eine Aufgabe oder nutze einen Befehl:"));
+    for (c, d) in [("/model", "Modell wählen"), ("/connect", "Provider hinzufügen"), ("/usage", "Nutzung & Limits"), ("/help", "alle Befehle")] {
+        println!("  {} {}", c.with(ACCENT), dim(&format!("- {d}")));
+    }
+    println!();
+}
+
+/// Put the terminal back into a sane state (raw mode off, cursor visible).
+pub fn restore_terminal() {
+    let _ = terminal::disable_raw_mode();
+    let _ = execute!(stdout(), cursor::Show, ResetColor);
+}
+
+/// "■ Unterbrochen" after Ctrl+C.
+pub fn interrupted() {
+    println!("{} {}", bad("■"), dim("Unterbrochen – was soll ich stattdessen tun?"));
+}
+
+/// Codex-like footer after a turn: elapsed time and context left.
+pub fn turn_footer(secs: u64, ctx_used: u64, ctx_len: Option<u64>) {
+    let mut parts = vec![format!("{secs}s")];
+    if let Some(len) = ctx_len.filter(|l| *l > 0) {
+        let left = 100.0 - (ctx_used as f64 / len as f64 * 100.0).min(100.0);
+        parts.push(format!("{left:.0}% Kontext frei"));
+    } else if ctx_used > 0 {
+        parts.push(format!("{} Tokens im Kontext", fmt_num(ctx_used as f64)));
+    }
+    println!();
+    println!("{}", dim(&format!("─ {} ─", parts.join(" · "))));
+}
+
+/// "• Ran cargo test" (verb bold). `pending` = waiting for approval.
+pub fn tool_line(verb: &str, detail: &str, pending: bool) {
+    let bullet = if pending { warn("•") } else { ok("•") };
+    println!("{} {} {}", bullet, bold(verb), detail);
+}
+
+/// Indented tool output: "  └ first line" + "    next lines".
+pub fn tool_out(lines: &[String]) {
+    for (i, l) in lines.iter().enumerate() {
+        println!("  {} {}", if i == 0 { dim("└") } else { " ".to_string() }, l);
+    }
+}
+
+/// "• Edited src/x.rs (+3 −1)" plus a short colored diff.
+pub fn diff_block(verb: &str, path: &str, before: &str, after: &str) {
+    let old: Vec<&str> = before.lines().collect();
+    let new: Vec<&str> = after.lines().collect();
+    // common prefix / suffix -> changed middle block
+    let mut pre = 0;
+    while pre < old.len() && pre < new.len() && old[pre] == new[pre] {
+        pre += 1;
+    }
+    let mut suf = 0;
+    while suf < old.len() - pre && suf < new.len() - pre && old[old.len() - 1 - suf] == new[new.len() - 1 - suf] {
+        suf += 1;
+    }
+    let removed = &old[pre..old.len() - suf];
+    let added = &new[pre..new.len() - suf];
+    let stats = format!("({} {})", ok(&format!("+{}", added.len())), bad(&format!("−{}", removed.len())));
+    println!("{} {} {} {}", ok("•"), bold(verb), path, stats);
+    let maxw = width().saturating_sub(12);
+    let cut = |l: &str| l.chars().take(maxw).collect::<String>();
+    let mut shown = 0;
+    let limit = 14;
+    let start = pre.saturating_sub(1);
+    if start < pre && start < old.len() {
+        println!("    {} {}", dim(&format!("{:>4}", start + 1)), dim(&format!("  {}", cut(old[start]))));
+    }
+    for (i, l) in removed.iter().enumerate() {
+        if shown >= limit { break; }
+        println!("    {} {}", dim(&format!("{:>4}", pre + i + 1)), bad(&format!("- {}", cut(l))));
+        shown += 1;
+    }
+    for (i, l) in added.iter().enumerate() {
+        if shown >= limit { break; }
+        println!("    {} {}", dim(&format!("{:>4}", pre + i + 1)), ok(&format!("+ {}", cut(l))));
+        shown += 1;
+    }
+    let total = removed.len() + added.len();
+    if total > shown {
+        println!("    {}", dim(&format!("… +{} weitere Zeilen", total - shown)));
+    }
+}
+
+/// Codex-style approval menu.
+pub fn approve(question: &str) -> Answer {
+    println!("  {}", bold(question));
+    if !std::io::stdin().is_terminal() {
+        return Answer::No;
+    }
+    let items = vec![
+        Item { label: "Ja, ausführen".into(), detail: "j".into() },
+        Item { label: "Ja, und für diese Sitzung nicht mehr fragen".into(), detail: "i".into() },
+        Item { label: "Nein, sag dem Agenten, was er anders machen soll".into(), detail: "n / Esc".into() },
+    ];
+    match pick("", &items, 0) {
+        Some(0) => Answer::Yes,
+        Some(1) => Answer::Always,
+        _ => Answer::No,
+    }
 }
 
 /* ---------------- spinner ---------------- */
@@ -110,21 +232,23 @@ impl Spinner {
             if !tty {
                 return;
             }
-            let frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
             let started = std::time::Instant::now();
-            let mut i = 0;
+            let mut i = 0usize;
             while !s2.load(Ordering::Relaxed) {
                 let secs = started.elapsed().as_secs();
+                // Codex-like shimmer: one bright letter walking through the label.
+                let chars: Vec<char> = label.chars().collect();
+                let hot = (i / 2) % (chars.len() + 6);
                 let mut out = stdout();
+                let _ = queue!(out, Print("\r"), SetForegroundColor(if i % 10 < 5 { TEAL } else { DIM }), Print("• "));
+                for (k, ch) in chars.iter().enumerate() {
+                    let c = if k == hot || k + 1 == hot { Color::White } else { DIM };
+                    let _ = queue!(out, SetForegroundColor(c), Print(ch));
+                }
                 let _ = queue!(
                     out,
-                    Print("\r"),
-                    SetForegroundColor(ACCENT),
-                    Print(frames[i % frames.len()]),
-                    ResetColor,
-                    Print(format!(" {} ", label)),
                     SetForegroundColor(DIM),
-                    Print(format!("({secs}s · Ctrl+C bricht ab)")),
+                    Print(format!(" ({secs}s • Ctrl+C zum Unterbrechen)")),
                     ResetColor,
                     terminal::Clear(ClearType::UntilNewLine)
                 );
@@ -200,6 +324,7 @@ pub fn pick(title: &str, items: &[Item], initial: usize) -> Option<usize> {
         let _ = queue!(out, Print("\r"), terminal::Clear(ClearType::FromCursorDown));
         let _ = queue!(
             out,
+            Print(if title.is_empty() { "  " } else { "" }),
             SetAttribute(Attribute::Bold),
             Print(title),
             SetAttribute(Attribute::Reset),
@@ -238,6 +363,10 @@ pub fn pick(title: &str, items: &[Item], initial: usize) -> Option<usize> {
         }
         match k.code {
             KeyCode::Esc => break None,
+            // Approval hotkeys (j/i/n) when the list has no filter typed yet.
+            KeyCode::Char('j') | KeyCode::Char('y') if filter.is_empty() && title.is_empty() => break Some(0),
+            KeyCode::Char('i') | KeyCode::Char('a') if filter.is_empty() && title.is_empty() => break Some(1),
+            KeyCode::Char('n') if filter.is_empty() && title.is_empty() => break None,
             KeyCode::Char('c') if k.modifiers.contains(KeyModifiers::CONTROL) => break None,
             KeyCode::Enter => break if visible.is_empty() { None } else { Some(sel) },
             KeyCode::Up => {
@@ -298,42 +427,6 @@ pub enum Answer {
     No,
 }
 
-/// Permission question: [y]es / [a]lways for this session / [n]o.
-pub fn confirm(question: &str) -> Answer {
-    println!(
-        "  {} {}  {}",
-        "?".with(WARN).bold(),
-        question,
-        dim("[j]a · [i]mmer · [n]ein")
-    );
-    if !std::io::stdin().is_terminal() {
-        return Answer::No;
-    }
-    if terminal::enable_raw_mode().is_err() {
-        let a = prompt_line("> ").unwrap_or_default().to_lowercase();
-        return match a.as_str() {
-            "j" | "y" | "ja" | "yes" => Answer::Yes,
-            "i" | "a" => Answer::Always,
-            _ => Answer::No,
-        };
-    }
-    let ans = loop {
-        let Ok(Event::Key(k)) = event::read() else { continue };
-        if k.kind != KeyEventKind::Press {
-            continue;
-        }
-        match k.code {
-            KeyCode::Char('j') | KeyCode::Char('y') | KeyCode::Enter => break Answer::Yes,
-            KeyCode::Char('i') | KeyCode::Char('a') => break Answer::Always,
-            KeyCode::Char('n') | KeyCode::Esc => break Answer::No,
-            KeyCode::Char('c') if k.modifiers.contains(KeyModifiers::CONTROL) => break Answer::No,
-            _ => {}
-        }
-    };
-    let _ = terminal::disable_raw_mode();
-    ans
-}
-
 /* ---------------- markdown-lite streaming renderer ---------------- */
 
 #[derive(Default)]
@@ -341,9 +434,24 @@ pub struct Markdown {
     buf: String,
     in_code: bool,
     pub wrote_any: bool,
+    first: bool,
 }
 
 impl Markdown {
+    /// Next rendered line gets the "•" bullet (agent message start).
+    pub fn start_message(&mut self) {
+        self.first = true;
+    }
+
+    fn lead(&mut self) -> String {
+        if self.first {
+            self.first = false;
+            format!("{} ", if plain() { "•".to_string() } else { "•".with(Color::White).to_string() })
+        } else {
+            "  ".to_string()
+        }
+    }
+
     pub fn push(&mut self, s: &str) {
         self.buf.push_str(s);
         while let Some(i) = self.buf.find('\n') {
@@ -366,27 +474,29 @@ impl Markdown {
         if t.starts_with("```") {
             self.in_code = !self.in_code;
             let lang = t.trim_start_matches('`').trim();
+            let lead = self.lead();
             if self.in_code {
-                println!("  {}", dim(&format!("┌─ {}", if lang.is_empty() { "code" } else { lang })));
+                println!("{lead}{}", dim(&format!("┌─ {}", if lang.is_empty() { "code" } else { lang })));
             } else {
-                println!("  {}", dim("└─"));
+                println!("{lead}{}", dim("└─"));
             }
             return;
         }
+        let lead = self.lead();
         if self.in_code {
-            println!("  {} {}", "│".with(DIM), line.with(Color::Rgb { r: 200, g: 220, b: 255 }));
+            println!("{lead}{} {}", "│".with(DIM), line.with(Color::Rgb { r: 200, g: 220, b: 255 }));
             return;
         }
         if let Some(h) = t.strip_prefix("### ").or_else(|| t.strip_prefix("## ")).or_else(|| t.strip_prefix("# ")) {
-            println!("  {}", inline(h).bold().with(ACCENT));
+            println!("{lead}{}", inline(h).bold());
             return;
         }
         if let Some(item) = t.strip_prefix("- ").or_else(|| t.strip_prefix("* ")) {
             let indent = line.len() - t.len();
-            println!("  {}{} {}", " ".repeat(indent), "•".with(TEAL), inline(item));
+            println!("{lead}{}{} {}", " ".repeat(indent), "-".with(DIM), inline(item));
             return;
         }
-        println!("  {}", inline(line));
+        println!("{lead}{}", inline(line));
     }
 }
 

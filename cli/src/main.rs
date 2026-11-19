@@ -57,6 +57,9 @@ impl Completer for ReplHelper {
 impl Hinter for ReplHelper {
     type Hint = String;
     fn hint(&self, line: &str, pos: usize, _: &Context<'_>) -> Option<String> {
+        if line.is_empty() {
+            return Some("Frag multillm nach irgendetwas – z. B. „erkläre dieses Projekt“".into());
+        }
         if line.len() < 2 || !line.starts_with('/') || pos != line.len() {
             return None;
         }
@@ -267,14 +270,15 @@ struct ModelChoice {
     id: String,
     label: String,
     detail: String,
+    ctx: Option<u64>,
 }
 
 async fn model_list(c: &Client) -> Vec<ModelChoice> {
-    let mut out = vec![ModelChoice { id: "multillm".into(), label: "multillm".into(), detail: "automatisches Routing über alle Modelle".into() }];
+    let mut out = vec![ModelChoice { id: "multillm".into(), label: "multillm".into(), detail: "automatisches Routing über alle Modelle".into(), ctx: None }];
     let Ok(v) = c.get("/api/models").await else { return out };
     for vm in v["virtualModels"].as_array().cloned().unwrap_or_default() {
         if let Some(id) = vm["id"].as_str() {
-            out.push(ModelChoice { id: id.into(), label: id.into(), detail: format!("virtuell · {} Modelle", vm["models"].as_array().map(|a| a.len()).unwrap_or(0)) });
+            out.push(ModelChoice { id: id.into(), label: id.into(), detail: format!("virtuell · {} Modelle", vm["models"].as_array().map(|a| a.len()).unwrap_or(0)), ctx: None });
         }
     }
     for p in v["providers"].as_array().cloned().unwrap_or_default() {
@@ -291,7 +295,7 @@ async fn model_list(c: &Client) -> Vec<ModelChoice> {
             if m["starred"].as_bool() == Some(true) {
                 detail.push_str(" · ★");
             }
-            out.push(ModelChoice { id: format!("{pid}::{mid}"), label: mid.to_string(), detail });
+            out.push(ModelChoice { id: format!("{pid}::{mid}"), label: mid.to_string(), detail, ctx: m["contextLength"].as_u64() });
         }
     }
     out
@@ -316,6 +320,7 @@ async fn choose_model(agent: &mut Agent, cfg: &mut config::Config) {
     let cur = list.iter().position(|m| m.id == agent.model).unwrap_or(0);
     if let Some(i) = ui::pick("Modell wählen", &items, cur) {
         agent.model = list[i].id.clone();
+        agent.context_len = list[i].ctx;
         cfg.model = Some(agent.model.clone());
         config::save(cfg);
         ui::success(&format!("Modell: {}", short_model(&agent.model)));
@@ -474,12 +479,8 @@ async fn connect_provider(c: &Client) {
         open_browser(url);
         let flow = r["flowId"].as_str().unwrap_or("").to_string();
         let mut sp = ui::Spinner::start("Warte auf Anmeldung");
-        let (tx, mut rx) = tokio::sync::watch::channel(false);
-        let ctrlc = tokio::spawn(async move {
-            if tokio::signal::ctrl_c().await.is_ok() {
-                let _ = tx.send(true);
-            }
-        });
+        let busy = agent::Busy::start();
+        let mut rx = busy.rx.clone();
         let res = loop {
             tokio::select! {
                 _ = tokio::time::sleep(std::time::Duration::from_secs(2)) => {}
@@ -492,7 +493,7 @@ async fn connect_provider(c: &Client) {
                 Err(e) => break Err(e.message),
             }
         };
-        ctrlc.abort();
+        drop(busy);
         sp.stop();
         match res {
             Ok(m) => ui::success(&m),
@@ -576,6 +577,7 @@ async fn main() {
             ui::PLAIN.store(true, std::sync::atomic::Ordering::Relaxed);
         }
     }
+    agent::install_sigint();
     let mut cfg = config::load();
     if args.logout {
         if let (Some(h), Some(s)) = (cfg.host.clone(), cfg.session.clone()) {
@@ -608,7 +610,15 @@ async fn main() {
 
     let uname = user["displayName"].as_str().or(user["username"].as_str()).unwrap_or("").to_string();
     println!();
-    ui::banner(cfg.host.as_deref().unwrap_or(""), &uname, &short_model(&agent.model), agent.mode.as_str());
+    let cwd_disp = {
+        let c = agent.cwd.display().to_string();
+        match dirs::home_dir().map(|h| h.display().to_string()) {
+            Some(h) if c.starts_with(&h) => format!("~{}", &c[h.len()..]),
+            _ => c,
+        }
+    };
+    agent.context_len = models.iter().find(|m| m.id == agent.model).and_then(|m| m.ctx);
+    ui::banner(cfg.host.as_deref().unwrap_or(""), &uname, &short_model(&agent.model), agent.mode.as_str(), &cwd_disp);
     if models.len() <= 1 {
         ui::info("Noch keine Modelle – verbinde mit /connect einen Provider.");
         println!();
@@ -625,17 +635,35 @@ async fn main() {
     let _ = std::fs::create_dir_all(config::dir());
     let _ = rl.load_history(&config::history_path());
 
+    let mut last_ctrl_c: Option<std::time::Instant> = None;
     loop {
+        // Codex-style status line: model · approval mode · key hints.
         let mode_tag = match agent.mode {
-            Mode::Bypass => " bypass".with(ui::BAD).to_string(),
-            Mode::Yolo => " yolo".with(ui::WARN).to_string(),
-            Mode::Ask => String::new(),
+            Mode::Bypass => ui::bad("bypass-permissions"),
+            Mode::Yolo => ui::warn("yolo"),
+            Mode::Ask => ui::ok("ask"),
         };
-        println!("{}", ui::dim(&format!("─ {} ", short_model(&agent.model))) + &mode_tag);
-        let prompt = format!("{} ", "❯".with(ui::ACCENT).bold());
+        println!(
+            "{}{}{}",
+            ui::dim(&format!("  {} · ", short_model(&agent.model))),
+            mode_tag,
+            ui::dim(" · ⏎ senden · \\⏎ neue Zeile · / Befehle · ⌃C beenden")
+        );
+        let prompt = if ui::PLAIN.load(std::sync::atomic::Ordering::Relaxed) { "› ".to_string() } else { format!("{} ", "›".bold()) };
         let mut input = match rl.readline(&prompt) {
-            Ok(l) => l,
-            Err(ReadlineError::Interrupted) => continue,
+            Ok(l) => {
+                last_ctrl_c = None;
+                l
+            }
+            Err(ReadlineError::Interrupted) => {
+                // Like Codex: first Ctrl+C clears / warns, second quits.
+                if last_ctrl_c.is_some_and(|t| t.elapsed() < std::time::Duration::from_secs(3)) {
+                    break;
+                }
+                last_ctrl_c = Some(std::time::Instant::now());
+                println!("{}", ui::dim("  Erneut Ctrl+C drücken zum Beenden"));
+                continue;
+            }
             Err(ReadlineError::Eof) => break,
             Err(e) => {
                 ui::error(&e.to_string());
@@ -743,5 +771,6 @@ async fn main() {
         let input = expand_mentions(&line, &agent.cwd);
         println!();
         agent.turn(&input).await;
+        println!();
     }
 }

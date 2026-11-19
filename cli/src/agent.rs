@@ -4,11 +4,69 @@
 use crate::client::Client;
 use crate::tools::{self, Kind};
 use crate::ui::{self, Answer, Markdown, Spinner};
-use crossterm::style::Stylize;
 use futures_util::StreamExt;
 use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::path::PathBuf;
+
+/* ---------- Ctrl+C ----------
+ * One process-wide handler. While a task runs, Ctrl+C cancels it; otherwise
+ * (prompts, password input, menus outside raw mode) it ends the program.
+ * Without this, tokio keeps SIGINT captured after the first turn and Ctrl+C
+ * silently did nothing anymore. */
+pub static BUSY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static CANCEL: std::sync::OnceLock<tokio::sync::watch::Sender<u64>> = std::sync::OnceLock::new();
+
+pub fn install_sigint() {
+    let (tx, _) = tokio::sync::watch::channel(0u64);
+    let _ = CANCEL.set(tx);
+    tokio::spawn(async {
+        loop {
+            if tokio::signal::ctrl_c().await.is_err() {
+                return;
+            }
+            if BUSY.load(std::sync::atomic::Ordering::SeqCst) {
+                if let Some(tx) = CANCEL.get() {
+                    tx.send_modify(|n| *n += 1);
+                }
+            } else {
+                ui::restore_terminal();
+                println!();
+                std::process::exit(130);
+            }
+        }
+    });
+}
+
+/// Cancellation for one busy section (task, OAuth wait). Dropping the guard
+/// makes Ctrl+C quit again.
+pub struct Busy {
+    pub rx: tokio::sync::watch::Receiver<bool>,
+    fwd: tokio::task::JoinHandle<()>,
+}
+
+impl Busy {
+    pub fn start() -> Busy {
+        BUSY.store(true, std::sync::atomic::Ordering::SeqCst);
+        let (tx, rx) = tokio::sync::watch::channel(false);
+        let mut global = CANCEL.get().map(|c| c.subscribe());
+        let fwd = tokio::spawn(async move {
+            if let Some(g) = global.as_mut() {
+                if g.changed().await.is_ok() {
+                    let _ = tx.send(true);
+                }
+            }
+        });
+        Busy { rx, fwd }
+    }
+}
+
+impl Drop for Busy {
+    fn drop(&mut self) {
+        self.fwd.abort();
+        BUSY.store(false, std::sync::atomic::Ordering::SeqCst);
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Mode {
@@ -47,6 +105,10 @@ pub struct Agent {
     pub search: bool,
     pub session_in: u64,
     pub session_out: u64,
+    /// prompt tokens of the last request (= current context size)
+    pub last_prompt_tokens: u64,
+    /// context window of the selected model, if known
+    pub context_len: Option<u64>,
     always: HashSet<String>,
 }
 
@@ -86,7 +148,7 @@ fn system_prompt(cwd: &std::path::Path, search: bool) -> String {
 impl Agent {
     pub fn new(client: Client, model: String, mode: Mode, search: bool) -> Self {
         let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        let mut a = Self { client, model, mode, cwd, messages: Vec::new(), search, session_in: 0, session_out: 0, always: HashSet::new() };
+        let mut a = Self { client, model, mode, cwd, messages: Vec::new(), search, session_in: 0, session_out: 0, last_prompt_tokens: 0, context_len: None, always: HashSet::new() };
         a.reset();
         a
     }
@@ -98,12 +160,9 @@ impl Agent {
     /// One user turn incl. all tool round-trips. Ctrl+C cancels.
     pub async fn turn(&mut self, input: &str) {
         self.messages.push(json!({"role": "user", "content": input}));
-        let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
-        let ctrlc = tokio::spawn(async move {
-            if tokio::signal::ctrl_c().await.is_ok() {
-                let _ = cancel_tx.send(true);
-            }
-        });
+        let busy = Busy::start();
+        let cancel_rx = busy.rx.clone();
+        let started = std::time::Instant::now();
         let mut steps = 0;
         loop {
             steps += 1;
@@ -124,7 +183,7 @@ impl Agent {
                         }
                     }
                     if *cancel_rx.borrow() {
-                        println!("  {}", ui::warn("⏹ abgebrochen"));
+                        ui::interrupted();
                         break;
                     }
                 }
@@ -139,8 +198,8 @@ impl Agent {
                 }
             }
         }
-        ctrlc.abort();
-        println!();
+        drop(busy);
+        ui::turn_footer(started.elapsed().as_secs(), self.last_prompt_tokens, self.context_len);
     }
 
     /// Streams one completion. Returns tool calls (if any) after appending the
@@ -153,7 +212,7 @@ impl Agent {
             "stream": true,
             "stream_options": {"include_usage": true},
         });
-        let mut spinner = Spinner::start("Denkt nach");
+        let mut spinner = Spinner::start("Arbeitet");
         let resp = tokio::select! {
             r = self.client.chat_stream(&body) => r,
             _ = cancel.changed() => { spinner.stop(); return Err("abgebrochen".into()); }
@@ -164,7 +223,7 @@ impl Agent {
                 // API key rotated? Fetch the current one and retry once.
                 spinner.stop();
                 self.client.fetch_api_key().await.map_err(|e| format!("Anmeldung abgelaufen: {e} - /login"))?;
-                spinner = Spinner::start("Denkt nach");
+                spinner = Spinner::start("Arbeitet");
                 self.client.chat_stream(&body).await.map_err(|e| e.message)?
             }
             Err(e) => {
@@ -215,8 +274,7 @@ impl Agent {
                         if spinning {
                             spinner.stop();
                             spinning = false;
-                            print!("{} ", "⏺".with(ui::TEAL));
-                            println!();
+                            md.start_message();
                         }
                         content.push_str(t);
                         md.push(t);
@@ -251,6 +309,7 @@ impl Agent {
             let o = u["completion_tokens"].as_u64().unwrap_or(0);
             self.session_in += i;
             self.session_out += o;
+            self.last_prompt_tokens = i + o;
         }
         let calls: Vec<Call> = calls
             .into_iter()
@@ -278,65 +337,86 @@ impl Agent {
         }
         self.messages.push(msg);
         if cancelled {
-            println!("  {}", ui::warn("⏹ abgebrochen"));
+            ui::interrupted();
             return Ok(None);
         }
         Ok(if calls.is_empty() { None } else { Some(calls) })
     }
 
-    fn header(name: &str, args: &Value) -> String {
+    /// "Ran", "Read", "Edited" ... like Codex.
+    fn title(name: &str, args: &Value) -> (String, String) {
         let s = |k: &str| args[k].as_str().unwrap_or("").to_string();
-        let (label, detail) = match name {
-            "bash" => ("Bash", s("command")),
+        let (verb, detail) = match name {
+            "bash" => ("Ran", s("command")),
             "read_file" => ("Read", s("path")),
             "write_file" => ("Write", s("path")),
             "edit_file" => ("Edit", s("path")),
-            "glob" => ("Glob", s("pattern")),
-            "grep" => ("Grep", s("pattern")),
-            "web_fetch" => ("Fetch", s("url")),
-            "web_search" => ("Search", s("query")),
-            other => (other, args.to_string()),
+            "glob" => ("List", s("pattern")),
+            "grep" => ("Search", s("pattern")),
+            "web_fetch" => ("Fetched", s("url")),
+            "web_search" => ("Searched", s("query")),
+            other => (other, String::new()),
         };
         let mut d = detail.replace('\n', " ⏎ ");
-        let max = ui::width().saturating_sub(label.len() + 8);
+        let max = ui::width().saturating_sub(verb.len() + 6);
         if d.chars().count() > max {
             d = d.chars().take(max.saturating_sub(1)).collect::<String>() + "…";
         }
-        format!("{} {}({})", "⏺".with(ui::ACCENT), label.bold(), d)
+        (verb.to_string(), d)
     }
 
     async fn execute(&mut self, c: &Call, cancel: &tokio::sync::watch::Receiver<bool>) -> String {
         let args: Value = serde_json::from_str(if c.args.trim().is_empty() { "{}" } else { &c.args }).unwrap_or_else(|_| json!({"_raw": c.args}));
         if args.get("_raw").is_some() {
-            println!("{}", Self::header(&c.name, &json!({})));
-            println!("  ⎿ {}", ui::bad("ungültige Argumente"));
+            ui::tool_line(&c.name, "", false);
+            ui::tool_out(&[ui::bad("ungültige Argumente")]);
             return "Error: tool arguments were not valid JSON. Retry with valid JSON.".into();
         }
-        println!("{}", Self::header(&c.name, &args));
+        let (verb, detail) = Self::title(&c.name, &args);
         if let Some(reason) = self.needs_permission(&c.name, &args) {
-            match ui::confirm(&reason) {
+            ui::tool_line(&verb, &detail, true);
+            match ui::approve(&reason) {
                 Answer::Yes => {}
                 Answer::Always => {
                     self.always.insert(self.always_key(&c.name, &args));
                 }
                 Answer::No => {
-                    println!("  ⎿ {}", ui::warn("abgelehnt"));
+                    ui::tool_out(&[ui::warn("abgelehnt")]);
                     return "The user denied this action. Do not retry it; ask what to do instead or continue differently.".into();
                 }
             }
         }
+        // Snapshot for the diff of edits.
+        let before = if c.name == "edit_file" || c.name == "write_file" {
+            std::fs::read_to_string(self.cwd.join(args["path"].as_str().unwrap_or(""))).ok()
+        } else {
+            None
+        };
         let (out, summary) = tools::run(&c.name, &args, &self.cwd, &self.client, cancel).await;
         let failed = out.starts_with("Error:");
-        println!("  ⎿ {}", if failed { ui::bad(&summary) } else { ui::dim(&summary) });
-        if c.name == "bash" && !failed {
-            // Short preview of command output.
-            let lines: Vec<&str> = out.lines().filter(|l| !l.trim().is_empty()).collect();
-            for l in lines.iter().take(4) {
-                let l: String = l.chars().take(ui::width().saturating_sub(8)).collect();
-                println!("    {}", ui::dim(&l));
+        match c.name.as_str() {
+            "edit_file" | "write_file" if !failed => {
+                let after = std::fs::read_to_string(self.cwd.join(args["path"].as_str().unwrap_or(""))).unwrap_or_default();
+                let path = args["path"].as_str().unwrap_or("");
+                ui::diff_block(if before.is_some() { "Edited" } else { "Added" }, path, before.as_deref().unwrap_or(""), &after);
             }
-            if lines.len() > 4 {
-                println!("    {}", ui::dim(&format!("… +{} Zeilen", lines.len() - 4)));
+            "bash" => {
+                ui::tool_line("Ran", &detail, false);
+                let lines: Vec<&str> = out.lines().filter(|l| !l.trim().is_empty() && !l.starts_with("[exit code")).collect();
+                let mut show: Vec<String> = lines.iter().take(5).map(|l| ui::dim(&l.chars().take(ui::width().saturating_sub(8)).collect::<String>())).collect();
+                if lines.len() > 5 {
+                    show.push(ui::dim(&format!("… +{} Zeilen", lines.len() - 5)));
+                }
+                if failed {
+                    show.push(ui::bad(&summary));
+                } else if summary.contains("Exit") {
+                    show.push(ui::bad(&summary));
+                }
+                ui::tool_out(&show);
+            }
+            _ => {
+                ui::tool_line(&verb, &detail, false);
+                ui::tool_out(&[if failed { ui::bad(&summary) } else { ui::dim(&summary) }]);
             }
         }
         out
