@@ -21,6 +21,8 @@ pub const DIM: Color = Color::Rgb { r: 120, g: 126, b: 142 };
 pub const OK: Color = Color::Rgb { r: 34, g: 197, b: 94 };
 pub const WARN: Color = Color::Rgb { r: 245, g: 158, b: 11 };
 pub const BAD: Color = Color::Rgb { r: 239, g: 68, b: 68 };
+/// Warm accent used for the welcome box and the working star.
+pub const STAR: Color = Color::Rgb { r: 215, g: 119, b: 87 };
 
 pub fn width() -> usize {
     terminal::size().map(|(w, _)| w as usize).unwrap_or(100).clamp(40, 200)
@@ -74,8 +76,8 @@ pub fn success(msg: &str) {
 pub fn banner(host: &str, user: &str, model: &str, mode: &str, cwd: &str) {
     let rows: Vec<(String, usize)> = {
         let mut v = Vec::new();
-        let title = format!(">_ Multi LLM (v{})", env!("CARGO_PKG_VERSION"));
-        v.push((if plain() { title.clone() } else { format!("{} {}", ">_".with(DIM), format!("Multi LLM (v{})", env!("CARGO_PKG_VERSION")).bold()) }, title.width()));
+        let title = format!("✻ Willkommen bei Multi LLM  v{}", env!("CARGO_PKG_VERSION"));
+        v.push((if plain() { title.clone() } else { format!("{} {}{}", "✻".with(STAR), "Willkommen bei Multi LLM".bold(), dim(&format!("  v{}", env!("CARGO_PKG_VERSION")))) }, title.width()));
         v.push((String::new(), 0));
         let kv = |k: &str, val: &str, hint: &str| -> (String, usize) {
             // Keep the box inside the terminal: shorten long values from the left.
@@ -105,12 +107,13 @@ pub fn banner(host: &str, user: &str, model: &str, mode: &str, cwd: &str) {
     };
     let inner = rows.iter().map(|r| r.1).max().unwrap_or(10).min(width().saturating_sub(4)) + 2;
     let line = "─".repeat(inner);
-    println!("{}", dim(&format!("╭{line}╮")));
+    let edge = |t: &str| if plain() { t.to_string() } else { t.with(STAR).to_string() };
+    println!("{}", edge(&format!("╭{line}╮")));
     for (txt, w) in rows {
         let pad = inner.saturating_sub(w + 1);
-        println!("{} {}{}{}", dim("│"), txt, " ".repeat(pad), dim("│"));
+        println!("{} {}{}{}", edge("│"), txt, " ".repeat(pad), edge("│"));
     }
-    println!("{}", dim(&format!("╰{line}╯")));
+    println!("{}", edge(&format!("╰{line}╯")));
     println!();
     println!("  {}", dim("Beschreibe eine Aufgabe oder nutze einen Befehl:"));
     for (c, d) in [("/model", "Modell wählen"), ("/connect", "Provider hinzufügen"), ("/usage", "Nutzung & Limits"), ("/help", "alle Befehle")] {
@@ -127,40 +130,40 @@ pub fn restore_terminal() {
 
 /// "■ Unterbrochen" after Ctrl+C.
 pub fn interrupted() {
-    println!("{} {}", bad("■"), dim("Unterbrochen – was soll ich stattdessen tun?"));
+    println!("  {}  {}", dim("⎿"), bad("Unterbrochen · was soll ich stattdessen tun?"));
 }
 
 /// Codex-like footer after a turn: elapsed time and context left.
-pub fn turn_footer(secs: u64, ctx_used: u64, ctx_len: Option<u64>) {
-    let mut parts = vec![format!("{secs}s")];
-    if let Some(len) = ctx_len.filter(|l| *l > 0) {
-        let left = 100.0 - (ctx_used as f64 / len as f64 * 100.0).min(100.0);
-        parts.push(format!("{left:.0}% Kontext frei"));
-    } else if ctx_used > 0 {
-        parts.push(format!("{} Tokens im Kontext", fmt_num(ctx_used as f64)));
+pub fn turn_footer(secs: u64, _ctx_used: u64, _ctx_len: Option<u64>) {
+    // Context usage lives in the input box status line; only long turns
+    // get a short timing note.
+    if secs >= 10 {
+        println!("{}", dim(&format!("  ✻ {secs}s")));
     }
     println!();
-    println!("{}", dim(&format!("─ {} ─", parts.join(" · "))));
 }
 
-/// "• Ran cargo test" (verb bold). `pending` = waiting for approval.
+/// "⏺ Bash(cargo test)" like Claude Code. `pending` = waiting for approval.
 pub fn tool_line(verb: &str, detail: &str, pending: bool) {
-    let bullet = if pending { warn("•") } else { ok("•") };
-    println!("{} {} {}", bullet, bold(verb), detail);
-}
-
-/// Indented tool output: "  └ first line" + "    next lines".
-pub fn tool_out(lines: &[String]) {
-    for (i, l) in lines.iter().enumerate() {
-        println!("  {} {}", if i == 0 { dim("└") } else { " ".to_string() }, l);
+    let dot = if plain() { "⏺".to_string() } else if pending { "⏺".with(WARN).to_string() } else { "⏺".with(OK).to_string() };
+    if detail.is_empty() {
+        println!("{} {}", dot, bold(verb));
+    } else {
+        println!("{} {}{}{}{}", dot, bold(verb), dim("("), detail, dim(")"));
     }
 }
 
-/// "• Edited src/x.rs (+3 −1)" plus a short colored diff.
+/// "  ⎿  first line" + aligned following lines.
+pub fn tool_out(lines: &[String]) {
+    for (i, l) in lines.iter().enumerate() {
+        println!("  {}  {}", if i == 0 { dim("⎿") } else { " ".to_string() }, l);
+    }
+}
+
+/// "⏺ Update(src/x.rs)" + summary + diff with colored backgrounds.
 pub fn diff_block(verb: &str, path: &str, before: &str, after: &str) {
     let old: Vec<&str> = before.lines().collect();
     let new: Vec<&str> = after.lines().collect();
-    // common prefix / suffix -> changed middle block
     let mut pre = 0;
     while pre < old.len() && pre < new.len() && old[pre] == new[pre] {
         pre += 1;
@@ -171,29 +174,57 @@ pub fn diff_block(verb: &str, path: &str, before: &str, after: &str) {
     }
     let removed = &old[pre..old.len() - suf];
     let added = &new[pre..new.len() - suf];
-    let stats = format!("({} {})", ok(&format!("+{}", added.len())), bad(&format!("−{}", removed.len())));
-    println!("{} {} {} {}", ok("•"), bold(verb), path, stats);
-    let maxw = width().saturating_sub(12);
-    let cut = |l: &str| l.chars().take(maxw).collect::<String>();
+    tool_line(if verb == "Added" { "Write" } else { "Update" }, path, false);
+    let plural = |n: usize, one: &str, many: &str| if n == 1 { format!("1 {one}") } else { format!("{n} {many}") };
+    let summary = if verb == "Added" {
+        format!("{} geschrieben", plural(added.len(), "Zeile", "Zeilen"))
+    } else {
+        format!("{} hinzugefügt, {} entfernt", plural(added.len(), "Zeile", "Zeilen"), plural(removed.len(), "Zeile", "Zeilen"))
+    };
+    tool_out(&[dim(&summary)]);
+    let w = width().saturating_sub(8);
+    let row = |num: usize, sign: char, text: &str, bg: Option<Color>| {
+        let body: String = format!("{:>4} {} {}", num, sign, text).chars().take(w).collect();
+        let pad = w.saturating_sub(body.width());
+        if plain() || bg.is_none() {
+            println!("     {}", if bg.is_none() { dim(&body) } else { body });
+        } else {
+            let mut out = stdout();
+            let _ = queue!(
+                out,
+                Print("     "),
+                crossterm::style::SetBackgroundColor(bg.unwrap()),
+                SetForegroundColor(Color::Rgb { r: 230, g: 232, b: 238 }),
+                Print(&body),
+                Print(" ".repeat(pad)),
+                ResetColor,
+                Print("\n")
+            );
+            let _ = out.flush();
+        }
+    };
+    let limit = 16;
     let mut shown = 0;
-    let limit = 14;
-    let start = pre.saturating_sub(1);
-    if start < pre && start < old.len() {
-        println!("    {} {}", dim(&format!("{:>4}", start + 1)), dim(&format!("  {}", cut(old[start]))));
+    if pre > 0 && pre <= old.len() {
+        row(pre, ' ', old[pre - 1], None);
     }
     for (i, l) in removed.iter().enumerate() {
         if shown >= limit { break; }
-        println!("    {} {}", dim(&format!("{:>4}", pre + i + 1)), bad(&format!("- {}", cut(l))));
+        row(pre + i + 1, '-', l, Some(Color::Rgb { r: 92, g: 30, b: 36 }));
         shown += 1;
     }
     for (i, l) in added.iter().enumerate() {
         if shown >= limit { break; }
-        println!("    {} {}", dim(&format!("{:>4}", pre + i + 1)), ok(&format!("+ {}", cut(l))));
+        row(pre + i + 1, '+', l, Some(Color::Rgb { r: 26, g: 74, b: 42 }));
         shown += 1;
+    }
+    if new.len() > pre + added.len() && suf > 0 {
+        let idx = pre + added.len();
+        row(idx + 1, ' ', new[idx], None);
     }
     let total = removed.len() + added.len();
     if total > shown {
-        println!("    {}", dim(&format!("… +{} weitere Zeilen", total - shown)));
+        println!("     {}", dim(&format!("… +{} weitere Zeilen", total - shown)));
     }
 }
 
@@ -233,28 +264,32 @@ impl Spinner {
                 return;
             }
             let started = std::time::Instant::now();
+            let glyphs = ["·", "✢", "✳", "✶", "✻", "✽", "✻", "✶", "✳", "✢"];
+            let verbs = ["Denkt nach", "Tüftelt", "Grübelt", "Werkelt", "Kombiniert", "Sinniert", "Baut"];
+            let custom = label != "Arbeitet";
             let mut i = 0usize;
             while !s2.load(Ordering::Relaxed) {
                 let secs = started.elapsed().as_secs();
-                // Codex-like shimmer: one bright letter walking through the label.
-                let chars: Vec<char> = label.chars().collect();
-                let hot = (i / 2) % (chars.len() + 6);
+                let verb = if custom { label.as_str() } else { verbs[(secs as usize / 4) % verbs.len()] };
+                let text = format!("{verb}…");
+                let chars: Vec<char> = text.chars().collect();
+                let hot = (i / 2) % (chars.len() + 8);
                 let mut out = stdout();
-                let _ = queue!(out, Print("\r"), SetForegroundColor(if i % 10 < 5 { TEAL } else { DIM }), Print("• "));
+                let _ = queue!(out, Print("\r"), SetForegroundColor(STAR), Print(glyphs[(i / 2) % glyphs.len()]), Print(" "));
                 for (k, ch) in chars.iter().enumerate() {
-                    let c = if k == hot || k + 1 == hot { Color::White } else { DIM };
+                    let c = if k + 1 >= hot && k <= hot + 1 { Color::Rgb { r: 255, g: 190, b: 160 } } else { STAR };
                     let _ = queue!(out, SetForegroundColor(c), Print(ch));
                 }
                 let _ = queue!(
                     out,
                     SetForegroundColor(DIM),
-                    Print(format!(" ({secs}s • Ctrl+C zum Unterbrechen)")),
+                    Print(format!(" ({secs}s · Ctrl+C zum Unterbrechen)")),
                     ResetColor,
                     terminal::Clear(ClearType::UntilNewLine)
                 );
                 let _ = out.flush();
                 i += 1;
-                std::thread::sleep(std::time::Duration::from_millis(80));
+                std::thread::sleep(std::time::Duration::from_millis(90));
             }
             let mut out = stdout();
             let _ = queue!(out, Print("\r"), terminal::Clear(ClearType::CurrentLine));
@@ -446,7 +481,7 @@ impl Markdown {
     fn lead(&mut self) -> String {
         if self.first {
             self.first = false;
-            format!("{} ", if plain() { "•".to_string() } else { "•".with(Color::White).to_string() })
+            format!("{} ", if plain() { "⏺".to_string() } else { "⏺".with(Color::White).to_string() })
         } else {
             "  ".to_string()
         }

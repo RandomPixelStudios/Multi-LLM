@@ -347,14 +347,14 @@ impl Agent {
     fn title(name: &str, args: &Value) -> (String, String) {
         let s = |k: &str| args[k].as_str().unwrap_or("").to_string();
         let (verb, detail) = match name {
-            "bash" => ("Ran", s("command")),
+            "bash" => ("Bash", s("command")),
             "read_file" => ("Read", s("path")),
             "write_file" => ("Write", s("path")),
-            "edit_file" => ("Edit", s("path")),
-            "glob" => ("List", s("pattern")),
-            "grep" => ("Search", s("pattern")),
-            "web_fetch" => ("Fetched", s("url")),
-            "web_search" => ("Searched", s("query")),
+            "edit_file" => ("Update", s("path")),
+            "glob" => ("Glob", s("pattern")),
+            "grep" => ("Grep", s("pattern")),
+            "web_fetch" => ("Fetch", s("url")),
+            "web_search" => ("WebSearch", s("query")),
             other => (other, String::new()),
         };
         let mut d = detail.replace('\n', " ⏎ ");
@@ -401,7 +401,7 @@ impl Agent {
                 ui::diff_block(if before.is_some() { "Edited" } else { "Added" }, path, before.as_deref().unwrap_or(""), &after);
             }
             "bash" => {
-                ui::tool_line("Ran", &detail, false);
+                ui::tool_line("Bash", &detail, false);
                 let lines: Vec<&str> = out.lines().filter(|l| !l.trim().is_empty() && !l.starts_with("[exit code")).collect();
                 let mut show: Vec<String> = lines.iter().take(5).map(|l| ui::dim(&l.chars().take(ui::width().saturating_sub(8)).collect::<String>())).collect();
                 if lines.len() > 5 {

@@ -7,6 +7,7 @@
 
 mod agent;
 mod client;
+mod composer;
 mod config;
 mod tools;
 mod ui;
@@ -14,12 +15,6 @@ mod ui;
 use agent::{Agent, Mode};
 use client::Client;
 use crossterm::style::Stylize;
-use rustyline::completion::{Completer, Pair};
-use rustyline::error::ReadlineError;
-use rustyline::highlight::Highlighter;
-use rustyline::hint::Hinter;
-use rustyline::validate::Validator;
-use rustyline::{Context, Editor, Helper};
 use serde_json::{json, Value};
 
 const COMMANDS: [(&str, &str); 14] = [
@@ -38,41 +33,6 @@ const COMMANDS: [(&str, &str); 14] = [
     ("/host", "Anderen Multi-LLM-Host verwenden"),
     ("/exit", "Beenden"),
 ];
-
-struct ReplHelper;
-impl Completer for ReplHelper {
-    type Candidate = Pair;
-    fn complete(&self, line: &str, pos: usize, _: &Context<'_>) -> rustyline::Result<(usize, Vec<Pair>)> {
-        if !line.starts_with('/') || line[..pos].contains(' ') {
-            return Ok((0, vec![]));
-        }
-        let c = COMMANDS
-            .iter()
-            .filter(|(c, _)| c.starts_with(&line[..pos]))
-            .map(|(c, d)| Pair { display: format!("{c:<22} {d}"), replacement: c.to_string() })
-            .collect();
-        Ok((0, c))
-    }
-}
-impl Hinter for ReplHelper {
-    type Hint = String;
-    fn hint(&self, line: &str, pos: usize, _: &Context<'_>) -> Option<String> {
-        if line.is_empty() {
-            return Some("Frag multillm nach irgendetwas – z. B. „erkläre dieses Projekt“".into());
-        }
-        if line.len() < 2 || !line.starts_with('/') || pos != line.len() {
-            return None;
-        }
-        COMMANDS.iter().find(|(c, _)| c.starts_with(line) && *c != line).map(|(c, _)| c[line.len()..].to_string())
-    }
-}
-impl Highlighter for ReplHelper {
-    fn highlight_hint<'h>(&self, hint: &'h str) -> std::borrow::Cow<'h, str> {
-        std::borrow::Cow::Owned(ui::dim(hint))
-    }
-}
-impl Validator for ReplHelper {}
-impl Helper for ReplHelper {}
 
 struct Args {
     host: Option<String>,
@@ -624,67 +584,28 @@ async fn main() {
         println!();
     }
 
-    let mut rl: Editor<ReplHelper, rustyline::history::DefaultHistory> = match Editor::new() {
-        Ok(e) => e,
-        Err(e) => {
-            ui::error(&format!("Terminal nicht nutzbar: {e}"));
-            return;
-        }
-    };
-    rl.set_helper(Some(ReplHelper));
-    let _ = std::fs::create_dir_all(config::dir());
-    let _ = rl.load_history(&config::history_path());
-
-    let mut last_ctrl_c: Option<std::time::Instant> = None;
+    let mut composer = composer::Composer::new(COMMANDS.to_vec());
     loop {
-        // Codex-style status line: model · approval mode · key hints.
         let mode_tag = match agent.mode {
-            Mode::Bypass => ui::bad("bypass-permissions"),
-            Mode::Yolo => ui::warn("yolo"),
+            Mode::Bypass => ui::bad("⏵⏵ bypass-permissions"),
+            Mode::Yolo => ui::warn("⏵ yolo"),
             Mode::Ask => ui::ok("ask"),
         };
-        println!(
-            "{}{}{}",
-            ui::dim(&format!("  {} · ", short_model(&agent.model))),
-            mode_tag,
-            ui::dim(" · ⏎ senden · \\⏎ neue Zeile · / Befehle · ⌃C beenden")
-        );
-        let prompt = if ui::PLAIN.load(std::sync::atomic::Ordering::Relaxed) { "› ".to_string() } else { format!("{} ", "›".bold()) };
-        let mut input = match rl.readline(&prompt) {
-            Ok(l) => {
-                last_ctrl_c = None;
-                l
+        let ctx = match agent.context_len.filter(|l| *l > 0) {
+            Some(len) if agent.last_prompt_tokens > 0 => {
+                format!(" · {:.0}% Kontext", 100.0 - (agent.last_prompt_tokens as f64 / len as f64 * 100.0).min(100.0))
             }
-            Err(ReadlineError::Interrupted) => {
-                // Like Codex: first Ctrl+C clears / warns, second quits.
-                if last_ctrl_c.is_some_and(|t| t.elapsed() < std::time::Duration::from_secs(3)) {
-                    break;
-                }
-                last_ctrl_c = Some(std::time::Instant::now());
-                println!("{}", ui::dim("  Erneut Ctrl+C drücken zum Beenden"));
-                continue;
-            }
-            Err(ReadlineError::Eof) => break,
-            Err(e) => {
-                ui::error(&e.to_string());
-                break;
-            }
+            _ => String::new(),
         };
-        // Multi-line: trailing backslash continues.
-        while input.ends_with('\\') {
-            input.pop();
-            input.push('\n');
-            match rl.readline(&format!("{} ", "…".with(ui::DIM))) {
-                Ok(l) => input.push_str(&l),
-                Err(_) => break,
-            }
-        }
+        let status = format!("{}{}", mode_tag, ui::dim(&format!(" · {}{}", short_model(&agent.model), ctx)));
+        let input = match composer.read(&status) {
+            composer::Outcome::Submit(t) => t,
+            composer::Outcome::Quit => break,
+        };
         let line = input.trim().to_string();
         if line.is_empty() {
             continue;
         }
-        let _ = rl.add_history_entry(line.as_str());
-        let _ = rl.save_history(&config::history_path());
         if line.starts_with('/') {
             let cmd = line.split_whitespace().next().unwrap_or("");
             let rest = line[cmd.len()..].trim();
@@ -771,6 +692,5 @@ async fn main() {
         let input = expand_mentions(&line, &agent.cwd);
         println!();
         agent.turn(&input).await;
-        println!();
     }
 }
