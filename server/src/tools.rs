@@ -79,6 +79,10 @@ pub async fn api_search(
         .cloned()
         .unwrap_or_default()
         .into_iter()
+        // Drop broken engine redirects such as "http:///go/..." (no host).
+        .filter(|r| {
+            r["url"].as_str().and_then(|u| url::Url::parse(u).ok()).is_some_and(|u| u.host_str().is_some_and(|h| !h.is_empty()))
+        })
         .take(count)
         .map(|r| {
             json!({

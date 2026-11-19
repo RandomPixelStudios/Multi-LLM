@@ -13,7 +13,7 @@ search:
     - json
 
 server:
-  secret_key: "ultrasecretkey"  # replaced with a random key by the SearXNG image on first start
+  # secret_key comes from the SEARXNG_SECRET env var (docker-compose.yml).
   limiter: false
   image_proxy: false
   public_instance: false

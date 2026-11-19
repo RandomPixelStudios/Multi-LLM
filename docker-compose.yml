@@ -35,8 +35,11 @@ services:
       - "8080"
     environment:
       SEARXNG_BASE_URL: http://searxng:8080/
+      # Signs SearXNG cookies. Internal-only service, but set your own value
+      # in a .env file next to this compose file: SEARXNG_SECRET=<random>
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-multillm-searxng-change-me-4f7c1e}
     volumes:
-      - ./docker/searxng:/etc/searxng:rw
+      - ./docker/searxng/settings.yml:/etc/searxng/settings.yml:ro
     cap_drop:
       - ALL
     cap_add:
