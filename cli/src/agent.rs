@@ -109,6 +109,8 @@ pub struct Agent {
     pub last_prompt_tokens: u64,
     /// context window of the selected model, if known
     pub context_len: Option<u64>,
+    /// Swarm mode: the agent may split work into parallel sub-agents.
+    pub swarm: bool,
     always: HashSet<String>,
 }
 
@@ -148,7 +150,7 @@ fn system_prompt(cwd: &std::path::Path, search: bool) -> String {
 impl Agent {
     pub fn new(client: Client, model: String, mode: Mode, search: bool) -> Self {
         let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        let mut a = Self { client, model, mode, cwd, messages: Vec::new(), search, session_in: 0, session_out: 0, last_prompt_tokens: 0, context_len: None, always: HashSet::new() };
+        let mut a = Self { client, model, mode, cwd, messages: Vec::new(), search, session_in: 0, session_out: 0, last_prompt_tokens: 0, context_len: None, swarm: false, always: HashSet::new() };
         a.reset();
         a
     }
@@ -205,10 +207,14 @@ impl Agent {
     /// Streams one completion. Returns tool calls (if any) after appending the
     /// assistant message to the history.
     async fn complete(&mut self, mut cancel: tokio::sync::watch::Receiver<bool>) -> Result<Option<Vec<Call>>, String> {
+        let mut tool_defs = tools::definitions(self.search);
+        if self.swarm {
+            tool_defs.push(crate::swarm::tool_definition());
+        }
         let body = json!({
             "model": self.model,
             "messages": self.messages,
-            "tools": tools::definitions(self.search),
+            "tools": tool_defs,
             "stream": true,
             "stream_options": {"include_usage": true},
         });
@@ -371,6 +377,13 @@ impl Agent {
             ui::tool_line(&c.name, "", false);
             ui::tool_out(&[ui::bad("ungültige Argumente")]);
             return "Error: tool arguments were not valid JSON. Retry with valid JSON.".into();
+        }
+        if c.name == "agent_swarm" {
+            if !self.swarm {
+                return "Error: swarm mode is off. Tell the user they can enable it with /swarm.".into();
+            }
+            let (out, _) = crate::swarm::run(&args, &self.client, &self.model, &self.cwd, self.search, self.mode == Mode::Bypass, cancel).await;
+            return out;
         }
         let (verb, detail) = Self::title(&c.name, &args);
         if let Some(reason) = self.needs_permission(&c.name, &args) {

@@ -9,6 +9,7 @@ mod agent;
 mod client;
 mod composer;
 mod config;
+mod swarm;
 mod tools;
 mod ui;
 
@@ -17,11 +18,12 @@ use client::Client;
 use crossterm::style::Stylize;
 use serde_json::{json, Value};
 
-const COMMANDS: [(&str, &str); 14] = [
+const COMMANDS: [(&str, &str); 15] = [
     ("/help", "Diese Hilfe"),
     ("/model", "Modell wechseln"),
     ("/usage", "Nutzung & Limits (5 h / Woche / Monat / Tokens)"),
     ("/connect", "Provider hinzufügen (OAuth oder API-Key)"),
+    ("/swarm", "Swarm-Modus an/aus · /swarm <Aufgabe> startet parallele Sub-Agenten"),
     ("/yolo", "Yolo-Modus an/aus (Standard: an)"),
     ("/bypass-permissions", "Alle Befehle ohne Nachfrage ausführen (an/aus)"),
     ("/ask", "Vor jeder Änderung nachfragen"),
@@ -597,7 +599,8 @@ async fn main() {
             }
             _ => String::new(),
         };
-        let status = format!("{}{}", mode_tag, ui::dim(&format!(" · {}{}", short_model(&agent.model), ctx)));
+        let swarm_tag = if agent.swarm { format!(" {}", ui::bold("⚡ swarm")) } else { String::new() };
+        let status = format!("{}{}{}", mode_tag, swarm_tag, ui::dim(&format!(" · {}{}", short_model(&agent.model), ctx)));
         let input = match composer.read(&status) {
             composer::Outcome::Submit(t) => t,
             composer::Outcome::Quit => break,
@@ -623,6 +626,31 @@ async fn main() {
                     }
                 }
                 "/usage" | "/cost" => show_usage(&agent).await,
+                "/swarm" => {
+                    if rest.is_empty() {
+                        agent.swarm = !agent.swarm;
+                        if agent.swarm {
+                            ui::info(&format!(
+                                "{} – der Agent darf Aufgaben in bis zu {} parallele Sub-Agenten aufteilen. {}",
+                                ui::bold("Swarm-Modus an"),
+                                swarm::MAX_PARALLEL,
+                                ui::warn("Achtung: verbraucht deutlich mehr Tokens/Kontingent.")
+                            ));
+                        } else {
+                            ui::info("Swarm-Modus aus.");
+                        }
+                    } else {
+                        let was = agent.swarm;
+                        agent.swarm = true;
+                        let task = format!(
+                            "[Swarm] Use the agent_swarm tool to split this task into independent parallel subtasks (self-contained prompts, no two coders on the same file), then combine the reports into one answer.\n\nTask: {}",
+                            expand_mentions(rest, &agent.cwd)
+                        );
+                        println!();
+                        agent.turn(&task).await;
+                        agent.swarm = was;
+                    }
+                }
                 "/connect" => connect_provider(&agent.client).await,
                 "/yolo" => {
                     agent.mode = if agent.mode == Mode::Yolo { Mode::Ask } else { Mode::Yolo };

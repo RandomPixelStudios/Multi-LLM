@@ -50,6 +50,7 @@ of your account are available right away.
 | `/model` | switch model (all enabled models, virtual bundles, `multillm` auto-routing) |
 | `/usage` | usage per model + 5 h / weekly / monthly / token limits, live quotas of OAuth providers |
 | `/connect` | add a provider (OAuth sign-in or API key) |
+| `/swarm` | swarm mode on/off; `/swarm <task>` splits a task into parallel sub-agents (coder / explore / plan) with a live panel |
 | `/yolo` | yolo mode on/off - **on by default**: no questions, except for clearly dangerous commands |
 | `/bypass-permissions` | run *everything* without asking |
 | `/ask` | confirm every change and command |
