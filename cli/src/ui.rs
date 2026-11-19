@@ -122,13 +122,54 @@ pub fn banner(host: &str, user: &str, model: &str, mode: &str, cwd: &str) {
     println!();
 }
 
+/// Turns raw upstream errors (OpenRouter JSON etc.) into one readable line:
+/// "AtlasCloud (über OpenRouter) lehnte die Anfrage ab: 400 bad request".
+pub fn pretty_error(raw: &str) -> String {
+    let Some(start) = raw.find('{') else { return raw.to_string() };
+    let json_part = &raw[start..];
+    // The server may cut the snippet; try progressively shorter prefixes.
+    let v: Option<serde_json::Value> = serde_json::from_str(json_part).ok().or_else(|| {
+        (1..json_part.len()).rev().filter(|i| json_part.is_char_boundary(*i)).take(400).find_map(|i| {
+            serde_json::from_str::<serde_json::Value>(&format!("{}}}}}", &json_part[..i])).ok()
+        })
+    });
+    let Some(v) = v else {
+        // Fallback: pull out the interesting bits with plain text search.
+        let grab = |key: &str| -> Option<String> {
+            let k = format!("\"{key}\":\"");
+            let i = raw.find(&k)? + k.len();
+            Some(raw[i..].split('"').next()?.to_string())
+        };
+        if let Some(p) = grab("provider_name") {
+            return format!("{p} lehnte die Anfrage ab ({})", grab("message").unwrap_or_else(|| "bad request".into()));
+        }
+        return raw.chars().take(200).collect();
+    };
+    let e = &v["error"];
+    let code = e["code"].as_u64().map(|c| c.to_string()).unwrap_or_default();
+    let mut msg = e["message"].as_str().unwrap_or("Fehler").to_string();
+    if let Some(raw_inner) = e["metadata"]["raw"].as_str() {
+        if let Ok(inner) = serde_json::from_str::<serde_json::Value>(raw_inner) {
+            if let Some(m) = inner["msg"].as_str().or(inner["message"].as_str()).or(inner["error"]["message"].as_str()) {
+                msg = m.to_string();
+            }
+        }
+    }
+    match e["metadata"]["provider_name"].as_str() {
+        Some(p) => format!("{p} (über OpenRouter) lehnte die Anfrage ab: {code} {msg}"),
+        None => format!("Provider lehnte die Anfrage ab: {code} {msg}"),
+    }
+}
+
 /// "⎿ Leere Antwort – neuer Versuch 2/4 in 2 s"
 pub fn retry_notice(msg: &str, attempt: u32, max: u32, wait: u64) {
     let room = width().saturating_sub(34).max(20);
     let first = msg.lines().next().unwrap_or("");
     let short: String = if first.chars().count() > room { first.chars().take(room - 1).collect::<String>() + "…" } else { first.to_string() };
     let msg = short.as_str();
-    println!("  {}  {} {}", dim("⎿"), warn(msg), dim(&format!("· neuer Versuch {attempt}/{max} in {wait}s")));
+    let when = if wait == 0 { "ohne Zusatzfelder".to_string() } else { format!("in {wait}s") };
+    let n = if attempt == max && wait == 0 { String::new() } else { format!("{attempt}/{max} ") };
+    println!("  {}  {} {}", dim("⎿"), warn(msg), dim(&format!("· neuer Versuch {n}{when}")));
 }
 
 /// Put the terminal back into a sane state (raw mode off, cursor visible).
@@ -600,5 +641,15 @@ pub fn fmt_num(n: f64) -> String {
         format!("{:.1}k", n / 1e3)
     } else {
         format!("{}", n.round() as i64)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn openrouter_error_is_readable() {
+        let raw = r#"Upstream rejected the request: {"error":{"message":"Provider returned error","code":400,"metadata":{"raw":"{\"code\":400,\"msg\":\"bad request\",\"request_id\":\"3946d9fd\"}","provider_name":"AtlasCloud","is_byok":false}},"user_id":"org_2uwFc1"#;
+        let p = super::pretty_error(raw);
+        assert!(p.contains("AtlasCloud") && p.contains("400") && p.contains("bad request"), "{p}");
     }
 }

@@ -124,6 +124,8 @@ pub struct Agent {
     pub context_len: Option<u64>,
     /// Swarm mode: the agent may split work into parallel sub-agents.
     pub swarm: bool,
+    /// Strict-compatibility mode after a provider rejected a request.
+    pub compat: bool,
     always: HashSet<String>,
 }
 
@@ -163,7 +165,7 @@ fn system_prompt(cwd: &std::path::Path, search: bool) -> String {
 impl Agent {
     pub fn new(client: Client, model: String, mode: Mode, search: bool) -> Self {
         let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        let mut a = Self { client, model, mode, cwd, messages: Vec::new(), search, session_in: 0, session_out: 0, last_prompt_tokens: 0, context_len: None, swarm: false, always: HashSet::new() };
+        let mut a = Self { client, model, mode, cwd, messages: Vec::new(), search, session_in: 0, session_out: 0, last_prompt_tokens: 0, context_len: None, swarm: false, compat: false, always: HashSet::new() };
         a.reset();
         a
     }
@@ -237,8 +239,14 @@ impl Agent {
                     }
                     attempt += 1;
                 }
+                Err(e) if !self.compat && !*cancel.borrow() && (e.contains("Upstream rejected") || e.contains("HTTP 400")) => {
+                    // 400 from the provider: try once with a strictly
+                    // standard request (no reasoning fields / extras).
+                    self.compat = true;
+                    ui::retry_notice(&ui::pretty_error(e.trim_start_matches(RETRY)), attempt + 1, attempt + 1, 0);
+                }
                 Err(e) => {
-                    let msg = e.trim_start_matches(RETRY).to_string();
+                    let msg = ui::pretty_error(e.trim_start_matches(RETRY));
                     return Err(if attempt > 1 { format!("{msg} (nach {attempt} Versuchen)") } else { msg });
                 }
                 ok => return ok,
@@ -251,13 +259,31 @@ impl Agent {
         if self.swarm {
             tool_defs.push(crate::swarm::tool_definition());
         }
-        let body = json!({
+        let mut body = json!({
             "model": self.model,
             "messages": self.messages,
             "tools": tool_defs,
             "stream": true,
             "stream_options": {"include_usage": true},
         });
+        if self.compat {
+            // Strict providers: only standard OpenAI fields.
+            body.as_object_mut().unwrap().remove("stream_options");
+            body["messages"] = json!(self
+                .messages
+                .iter()
+                .map(|m| {
+                    let mut m = m.clone();
+                    if let Some(o) = m.as_object_mut() {
+                        o.remove("reasoning_content");
+                        if o.get("content").is_some_and(Value::is_null) {
+                            o.insert("content".into(), json!(""));
+                        }
+                    }
+                    m
+                })
+                .collect::<Vec<_>>());
+        }
         let mut spinner = Spinner::start("Arbeitet");
         let resp = tokio::select! {
             r = self.client.chat_stream(&body) => r,
@@ -281,6 +307,7 @@ impl Agent {
         let mut buf = String::new();
         let mut content = String::new();
         let mut reasoning_shown = false;
+        let mut reasoning = String::new();
         let mut calls: Vec<Call> = Vec::new();
         let mut md = Markdown::default();
         let mut spinning = true;
@@ -312,8 +339,9 @@ impl Agent {
                 }
                 let delta = &v["choices"][0]["delta"];
                 let r = delta["reasoning_content"].as_str().or(delta["reasoning"].as_str()).unwrap_or("");
-                if !r.is_empty() && !reasoning_shown {
+                if !r.is_empty() {
                     reasoning_shown = true;
+                    reasoning.push_str(r);
                 }
                 if let Some(t) = delta["content"].as_str() {
                     if !t.is_empty() {
@@ -368,13 +396,21 @@ impl Agent {
                 c
             })
             .collect();
-        let mut msg = json!({"role": "assistant", "content": if content.is_empty() { Value::Null } else { json!(content) }});
+        // "" instead of null: several providers reject a null content.
+        let mut msg = json!({"role": "assistant", "content": content});
+        // Reasoning models (DeepSeek, Kimi, GLM, ...) require their reasoning
+        // to be sent back with tool calls, otherwise the next request is
+        // rejected with 400.
+        if !reasoning.is_empty() && !self.compat {
+            msg["reasoning_content"] = json!(reasoning);
+        }
         if !calls.is_empty() {
             msg["tool_calls"] = json!(calls
                 .iter()
                 .map(|c| json!({"id": c.id, "type": "function", "function": {"name": c.name, "arguments": if c.args.trim().is_empty() { "{}" } else { c.args.as_str() }}}))
                 .collect::<Vec<_>>());
         }
+        let _ = reasoning_shown;
         if content.is_empty() && calls.is_empty() {
             if cancelled {
                 return Err("abgebrochen".into());

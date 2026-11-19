@@ -384,6 +384,7 @@ async fn sub_agent(
         let mut stream = resp.bytes_stream();
         let mut buf = String::new();
         let mut content = String::new();
+        let mut reasoning = String::new();
         let mut calls: Vec<(String, String, String)> = Vec::new();
         'read: loop {
             let chunk = tokio::select! {
@@ -407,6 +408,9 @@ async fn sub_agent(
                     cards.lock().unwrap()[i].tokens += t;
                 }
                 let delta = &v["choices"][0]["delta"];
+                if let Some(r) = delta["reasoning_content"].as_str().or(delta["reasoning"].as_str()) {
+                    reasoning.push_str(r);
+                }
                 if let Some(t) = delta["content"].as_str() {
                     content.push_str(t);
                     if let Some(last) = content.lines().last() {
@@ -451,7 +455,10 @@ async fn sub_agent(
                 c
             })
             .collect();
-        let mut msg = json!({"role": "assistant", "content": if content.is_empty() { Value::Null } else { json!(content) }});
+        let mut msg = json!({"role": "assistant", "content": content});
+        if !reasoning.is_empty() {
+            msg["reasoning_content"] = json!(reasoning);
+        }
         if calls.is_empty() {
             if content.trim().is_empty() {
                 // Empty answer: retry the step (bounded by MAX_STEPS).
