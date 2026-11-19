@@ -26,19 +26,31 @@ pub fn width() -> usize {
     terminal::size().map(|(w, _)| w as usize).unwrap_or(100).clamp(40, 200)
 }
 
+/// Colors off (pipe / NO_COLOR): crossterm still emits reset codes, so the
+/// helpers return plain text instead.
+pub static PLAIN: AtomicBool = AtomicBool::new(false);
+fn plain() -> bool {
+    PLAIN.load(Ordering::Relaxed)
+}
+
 pub fn dim(s: &str) -> String {
+    if plain() { return s.to_string(); }
     s.with(DIM).to_string()
 }
 pub fn bold(s: &str) -> String {
+    if plain() { return s.to_string(); }
     s.bold().to_string()
 }
 pub fn ok(s: &str) -> String {
+    if plain() { return s.to_string(); }
     s.with(OK).to_string()
 }
 pub fn warn(s: &str) -> String {
+    if plain() { return s.to_string(); }
     s.with(WARN).to_string()
 }
 pub fn bad(s: &str) -> String {
+    if plain() { return s.to_string(); }
     s.with(BAD).to_string()
 }
 

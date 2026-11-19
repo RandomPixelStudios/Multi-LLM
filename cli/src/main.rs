@@ -573,6 +573,7 @@ async fn main() {
         use std::io::IsTerminal;
         if !std::io::stdout().is_terminal() || std::env::var_os("NO_COLOR").is_some() {
             crossterm::style::force_color_output(false);
+            ui::PLAIN.store(true, std::sync::atomic::Ordering::Relaxed);
         }
     }
     let mut cfg = config::load();
