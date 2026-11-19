@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Multi LLM</title>
+<link rel="icon" href="/logo.png">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<!-- Lock / sign-in screen -->
+<section id="lock" class="lock hidden" aria-label="Anmeldung">
+  <div class="lock-bg"></div>
+  <div id="lock-clock" class="lock-clock">
+    <div id="clock-time" class="clock-time">--:--</div>
+    <div id="clock-date" class="clock-date"></div>
+    <div class="lock-hint">Klicken oder eine Taste drücken, um sich anzumelden</div>
+  </div>
+  <div id="signin" class="signin hidden">
+    <div class="signin-center">
+      <div id="si-avatar" class="avatar xl">?</div>
+      <div id="si-name" class="si-name"></div>
+      <input id="si-user" class="si-input hidden" type="text" placeholder="Benutzername" autocomplete="username" spellcheck="false">
+      <form id="si-form" class="si-form" autocomplete="on">
+        <div class="si-pw">
+          <input id="si-pass" type="password" placeholder="Kennwort" autocomplete="current-password">
+          <button id="si-go" type="submit" class="si-arrow" aria-label="Anmelden">&#8594;</button>
+        </div>
+      </form>
+      <div id="si-msg" class="si-msg hidden"></div>
+      <button id="si-ok" class="btn ghost hidden">OK</button>
+      <div id="si-change" class="si-change hidden">
+        <p class="si-note">Sie müssen Ihr Kennwort ändern, bevor Sie sich zum ersten Mal anmelden.</p>
+        <input id="ch-new" type="password" placeholder="Neues Kennwort" autocomplete="new-password">
+        <input id="ch-new2" type="password" placeholder="Kennwort bestätigen" autocomplete="new-password">
+        <div class="pw-meter"><span id="ch-meter"></span></div>
+        <button id="ch-go" class="btn primary">Kennwort ändern &#8594;</button>
+      </div>
+      <div id="si-spinner" class="dots hidden"><i></i><i></i><i></i></div>
+    </div>
+    <div id="si-tiles" class="si-tiles"></div>
+    <div class="si-corner">
+      <span id="si-host"></span>
+    </div>
+  </div>
+</section>
+
+<!-- App -->
+<div id="app" class="app hidden">
+  <aside class="side">
+    <div class="brand"><img src="/logo.png" alt=""><span>Multi LLM</span></div>
+    <nav id="nav">
+      <button data-page="overview" class="active"><span class="ico">&#9673;</span>Übersicht</button>
+      <button data-page="providers"><span class="ico">&#9881;</span>Provider</button>
+      <button data-page="models"><span class="ico">&#9638;</span>Modelle</button>
+      <button data-page="routing"><span class="ico">&#8645;</span>Routing</button>
+      <button data-page="usage"><span class="ico">&#9636;</span>Nutzung &amp; Limits</button>
+      <button data-page="api"><span class="ico">&#9919;</span>API &amp; CLI</button>
+      <button data-page="users" class="admin-only"><span class="ico">&#9787;</span>Benutzer</button>
+      <button data-page="settings"><span class="ico">&#9776;</span>Einstellungen</button>
+    </nav>
+    <div class="side-foot">
+      <button id="me-btn" class="me">
+        <span id="me-avatar" class="avatar sm">?</span>
+        <span class="me-text"><b id="me-name"></b><small id="me-role"></small></span>
+      </button>
+    </div>
+  </aside>
+  <main id="main" class="main"></main>
+</div>
+
+<div id="modal-root"></div>
+<div id="toast" class="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>

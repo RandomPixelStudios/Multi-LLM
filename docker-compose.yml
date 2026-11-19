@@ -1,0 +1,51 @@
+# Multi LLM + bundled SearXNG (web search for the multillm CLI).
+#
+#   docker compose up -d
+#   -> http://<host>:5000   (first sign-in: Admin / admin, then set a new password)
+#
+services:
+  multillm:
+    build: .
+    image: ghcr.io/randompixelstudios/multi-llm:latest
+    container_name: multillm
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      MULTI_LLM_SEARXNG_URL: http://searxng:8080
+      # Public URL if you use a reverse proxy / domain (needed for OAuth
+      # redirects such as OpenRouter when the Host header differs):
+      # MULTI_LLM_PUBLIC_URL: https://llm.example.com
+      # Behind a TLS reverse proxy:
+      # MULTI_LLM_COOKIE_SECURE: "1"
+      # MULTI_LLM_TRUST_PROXY: "1"
+      # Hide user tiles on the sign-in screen:
+      # MULTI_LLM_HIDE_USERS: "1"
+    volumes:
+      - multillm-data:/data
+    depends_on:
+      - searxng
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: multillm-searxng
+    restart: unless-stopped
+    # Not published: only reachable from the multillm container.
+    expose:
+      - "8080"
+    environment:
+      SEARXNG_BASE_URL: http://searxng:8080/
+      # Signs SearXNG cookies. Internal-only service, but set your own value
+      # in a .env file next to this compose file: SEARXNG_SECRET=<random>
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-multillm-searxng-change-me-4f7c1e}
+    volumes:
+      - ./docker/searxng/settings.yml:/etc/searxng/settings.yml:ro
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+
+volumes:
+  multillm-data:

@@ -1,302 +1,103 @@
-# Baut pro Branch das native Paket und hängt es an ein GitHub-Release.
+# CI + releases for Multi LLM 2.x
 #
-#   Windows-Branch -> .msi + .exe (nsis)
-#   mac-Branch     -> .dmg (arm64 + x64)
-#   Linux-Branch   -> .deb + .rpm + AppImage
-#   Website-Branch -> nur prüft (GitHub Pages baut die Seite selbst)
+#   push / PR          -> tests (server + CLI)
+#   tag v*  (or manual)-> CLI binaries attached to a GitHub release
+#                         + Docker image ghcr.io/randompixelstudios/multi-llm
 #
-# Ein Release entsteht pro Branch beim Push auf `main` dieses Branches und
-# manuell über "Run workflow". Assets mit gleichem Namen werden ersetzt, damit
-# ein wiederholter Build nicht an einem vorhandenen Release scheitert.
-#
-# Schritte für dich als Owner (einmalig):
-#   Settings -> Pages: Source = Branch `Website` (betrifft nur die Website)
-#   Actions -> General -> "Allow GitHub Actions to create and approve pull requests"
-#   (für release-Asset-Uploads ist nur `contents: write` nötig, s. unten)
+# install.sh / install.ps1 download the CLI from
+#   https://github.com/RandomPixelStudios/Multi-LLM/releases/latest/download/
 
 name: Release
 
 on:
   push:
-    branches: [Windows, mac, Linux, Website]
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: write
-
-concurrency:
-  group: release-${{ github.ref_name }}
-  cancel-in-progress: true
+  packages: write
 
 jobs:
-  # ---------------------------------------------------------------- Windows
-  windows:
-    name: Windows (.msi + .exe)
-    if: github.ref_name == 'Windows'
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      # WebView2 ist auf windows-latest vorinstalliert. NSIS holt die
-      # tauri-action selbst; Rust-Zusatz-Komponenten kommen unten.
-      - name: Show runner details
-        run: |
-          rustc -V || echo "rust via dtolnay/rust-toolchain"
-          node -v
-          npm -v
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          # WebView2 (winwebview) wird auf windows-latest bereits
-          # vorinstalliert; ohne dieses Feature sucht cargo nach einem
-          # Windows-SDK, das der Runner nicht hat.
-          targets: x86_64-pc-windows-msvc
-
-      - name: Verify the toolchain before building
-        shell: pwsh
-        run: |
-          Write-Host "rustc: $(rustc --version)"
-          Write-Host "cargo: $(cargo --version)"
-          # Fehlgeschlagene native Abhaengigkeiten zeigen sich als
-          # "can't find crate for `core`" bzw. Linker-Fehler; das hier
-          # faengt sie VOR dem langen Tauri-Build ab.
-          cargo fetch --manifest-path src-tauri/Cargo.toml
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-          Write-Host "dependencies resolved"
-
-      - name: Cache Rust build
-        uses: actions/cache@v4
-        with:
-          path: src-tauri/target
-          key: ${{ runner.os }}-cargo-release-${{ hashFiles('src-tauri/Cargo.lock') }}
-
-      # Tauri holt WebView2 und NSIS selbst; der Runner bringt beides mit.
-      # Wichtig: --bundles statt targets in tauri.conf.json, damit nicht
-      # plattformfremde Formate mitgebaut werden.
-      - name: Build
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: v__VERSION__
-          releaseName: "Multi LLM __VERSION__"
-          releaseBody: |
-            Windows installers for Multi LLM.
-
-            - `.msi` — the regular installer, suitable for most setups
-            - `.exe` — NSIS installer, use it if the MSI does not fit your setup
-
-            Linux packages (`.deb`, `.rpm`, `.AppImage`) and the macOS `.dmg`
-            files are attached to this same release by the other branch jobs.
-          releaseDraft: true
-          prerelease: false
-          # --bundles ist der native Weg; ein --config-JSON-Override
-          # scheitert leise, wenn sich die Tauri-Schema ändert.
-          args: --bundles msi nsis
-
-  # ------------------------------------------------------------------ Linux
-  linux:
-    name: Linux (.deb + .rpm + AppImage)
-    if: github.ref_name == 'Linux'
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace --locked
+      - name: JS syntax check (web UI)
+        run: node --check server/web/app.js
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install Linux prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            build-essential \
-            curl \
-            wget \
-            file \
-            libxdo-dev \
-            libssl-dev
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust build
-        uses: actions/cache@v4
-        with:
-          path: src-tauri/target
-          key: ${{ runner.os }}-cargo-release-${{ hashFiles('src-tauri/Cargo.lock') }}
-
-      - name: Build
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: v__VERSION__
-          releaseName: "Multi LLM __VERSION__"
-          releaseBody: |
-            Linux packages for Multi LLM.
-
-            - `.deb` — Debian/Ubuntu/Mint: `sudo apt install ./multi-llm_*_amd64.deb`
-            - `.rpm` — Fedora/RHEL/openSUSE: `sudo dnf install ./multi-llm-*.rpm`
-            - `.AppImage` — runs without installing: `chmod +x *.AppImage && ./multillm.AppImage`
-
-            Requires `libwebkit2gtk-4.1` and `libayatana-appindicator3-1`.
-          releaseDraft: true
-          prerelease: false
-          args: --bundles deb rpm appimage
-
-      # Das Manifest liegt in der Website, nicht in diesem Branch. Der Job
-      # schreibt es deshalb in einen Workspace-Ausgabepfad; der folgende
-      # Schritt committet nur diese eine Datei auf den Website-Branch,
-      # damit die App die neue Version auch wirklich sieht.
-      - name: Write update manifest
-        env:
-          UPDATE_SITE_DIR: ${{ github.workspace }}/website-update
-        run: node scripts/gen-update-manifest.mjs --out "$UPDATE_SITE_DIR"
-
-      - name: Publish update manifest to the Website branch
-        env:
-          UPDATE_SITE_DIR: ${{ github.workspace }}/website-update
-        run: |
-          set -eu
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote add pages "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
-          git fetch --depth 1 pages Website
-          # Nur update.json austauschen - die uebrigen Website-Dateien
-          # duerfen nicht in die Historie des Branches zurueckgeschrieben
-          # werden, sonst ueberschreibt der Job spaetere Aenderungen.
-          git worktree add ../website-tree pages/Website
-          cp "$UPDATE_SITE_DIR/update.json" ../website-tree/update.json
-          cd ../website-tree
-          if git diff --quiet -- update.json; then
-            echo "update.json ist bereits aktuell."
-          else
-            git add update.json
-            git commit -m "Update-Manifest auf v$(node -p "require('$GITHUB_WORKSPACE/package.json').version")"
-            git push pages HEAD:Website
-          fi
-
-  # ------------------------------------------------------------------ macOS
-  macos:
-    name: macOS .dmg (${{ matrix.target }})
-    # Nur auf dem mac-Branch. Wenn der Windows-Job die DMGs mitbauen
-    # wuerde, legte er ein zweites Release an und die Pakete landeten
-    # verstreut - mac gehoert in seinen eigenen Branch.
-    if: github.ref_name == 'mac'
-    runs-on: macos-latest
+  cli:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     strategy:
-      # max-parallel: 1 ist Pflicht. tauri-action legt das Draft-Release beim
-      # Start an und haengt dann die Assets an; laufen beide Architekturen
-      # gleichzeitig, findet einer das Release nicht (HTTP 404) und der Job
-      # bricht ab - auch wenn der Build selbst vollstaendig ok war.
-      max-parallel: 1
       fail-fast: false
       matrix:
-        # Zwei native Builds statt universal-apple-darwin: der Universal-Build
-        # braucht beide SDKs gleichzeitig und scheitert auf dem Runner
-        # haeufiger. Zwei schmalere DMGs sind fuer die Anwender derselbe
-        # Nutzen und deutlich robuster.
-        target: [aarch64-apple-darwin, x86_64-apple-darwin]
+        include:
+          - { os: ubuntu-latest,  target: x86_64-unknown-linux-musl,  asset: multillm-linux-x86_64.tar.gz }
+          - { os: ubuntu-latest,  target: aarch64-unknown-linux-musl, asset: multillm-linux-aarch64.tar.gz }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc,     asset: multillm-windows-x86_64.zip }
+          - { os: macos-latest,   target: aarch64-apple-darwin,       asset: multillm-macos-aarch64.tar.gz }
+          - { os: macos-latest,   target: x86_64-apple-darwin,        asset: multillm-macos-x86_64.tar.gz }
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: houseabsolute/actions-rust-cross@v1
         with:
-          node-version: 20
-          cache: npm
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+          command: build
+          target: ${{ matrix.target }}
+          args: "--release --locked -p multillm"
+          strip: true
+      - name: Package (unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ../../../${{ matrix.asset }} multillm
+          cd ../../..
+          shasum -a 256 ${{ matrix.asset }} > ${{ matrix.asset }}.sha256
+      - name: Package (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path target/${{ matrix.target }}/release/multillm.exe -DestinationPath ${{ matrix.asset }}
+          (Get-FileHash ${{ matrix.asset }} -Algorithm SHA256).Hash.ToLower() + "  ${{ matrix.asset }}" | Out-File -Encoding ascii ${{ matrix.asset }}.sha256
+      - uses: softprops/action-gh-release@v2
         with:
-          targets: ${{ matrix.target }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'cli-latest' }}
+          make_latest: true
+          files: |
+            ${{ matrix.asset }}
+            ${{ matrix.asset }}.sha256
 
-      - name: Cache Rust build
-        uses: actions/cache@v4
-        with:
-          path: src-tauri/target
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-release-${{ hashFiles('src-tauri/Cargo.lock') }}
-
-      # Nicht signiert bauen: der Quellcode ist nicht von Apple signiert.
-      # APPLE_SIGNING_IDENTITY="-" ist der dokumentierte Weg, das Signieren
-      # abzuschalten; die übrigen Apple-Variablen bleiben bewusst UNgesetzt,
-      # denn als leerer String wertet Tauri sie als "Zertifikat vorhanden,
-      # aber leer" und bricht ab.
-      - name: Note unsigned build
-        run: echo "Building unsigned - Gatekeeper will ask on first launch"
-
-      - name: Build
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Leeres Zeichenkette-Verhalten in Tauri v2 abbilden: kein Signieren.
-          APPLE_SIGNING_IDENTITY: "-"
-        with:
-          # Gleiches Tag wie Windows und Linux: tauri-action haengt die
-          # Assets an das bestehende Release an. max-parallel: 1 oben
-          # verhindert, dass beide Architekturen gleichzeitig darauf zugreifen.
-          tagName: v__VERSION__
-          releaseName: "Multi LLM __VERSION__"
-          releaseBody: |
-            macOS build for Multi LLM. This DMG is for **${{ matrix.target }}**.
-
-            - `aarch64-apple-darwin` = Apple Silicon (M1/M2/M3/M4)
-            - `x86_64-apple-darwin` = Intel Macs
-
-            The DMG is **not signed** and **not notarised**, so Gatekeeper shows
-            a warning on first launch — right-click the app, choose "Open", then
-            confirm. This is expected for unsigned builds and happens once.
-
-            macOS is built from the `Windows` branch because that is where the
-            cross-platform desktop code lives.
-          releaseDraft: true
-          prerelease: false
-          args: --bundles dmg --target ${{ matrix.target }}
-
-  # ------------------------------------------------- Website: nur Prüfung
-  verify-only:
-    name: ${{ github.ref_name }} prüfen
-    if: github.ref_name == 'Website'
+  docker:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
         with:
-          node-version: 20
-          cache: npm
-
-      - run: npm ci
-
-      - name: Rust-Kern testen
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Linux-Abhängigkeiten
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
-
-      - run: cargo test --manifest-path src-tauri/Cargo.toml
-      - run: npm run check:web
-      - run: npm run presets:check
-      - run: npm run legal:check
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/randompixelstudios/multi-llm
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
