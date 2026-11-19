@@ -1,0 +1,22 @@
+# SearXNG for Multi LLM (internal only). The JSON format is required by the
+# /api/tools/search endpoint the multillm CLI uses.
+use_default_settings: true
+
+general:
+  instance_name: "Multi LLM Search"
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  formats:
+    - html
+    - json
+
+server:
+  secret_key: "ultrasecretkey"  # replaced with a random key by the SearXNG image on first start
+  limiter: false
+  image_proxy: false
+  public_instance: false
+
+ui:
+  static_use_hash: true

@@ -1,0 +1,26 @@
+[package]
+name = "multillm"
+description = "multillm - coding agent CLI for a Multi LLM server"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "multillm"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "time", "signal", "io-util", "sync"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "gzip"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+futures-util = "0.3"
+rustyline = "14"
+crossterm = "0.28"
+dirs = "5"
+rpassword = "7"
+ignore = "0.4"
+globset = "0.4"
+regex = "1"
+html2text = "0.12"
+chrono = "0.4"
+unicode-width = "0.1"

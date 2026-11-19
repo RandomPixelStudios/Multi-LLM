@@ -1,22 +1,7 @@
-# Dependencies
-node_modules/
-
-# Build artifacts
-dist/
-src-tauri/target/
-*.deb
-
-# Local backups / large binaries (never belong into the repo)
-BackupLLM.zip
+/target
 *.zip
-Trailer/*.mp4
-
-# Tooling / editor state
-.kilo/
+*.log
 .vscode/
 .idea/
-*.log
-
-# OS noise
 .DS_Store
 Thumbs.db
